@@ -34,7 +34,7 @@ const int map_page_size = 288;
 #define BIT_SQUIRT_TOOTHLOG2READY 7  //Used to flag if tooth log 2 is ready (Log is not currently used)
 
 #define TOOTH_LOG_SIZE      128
-#define TOOTH_LOG_BUFFER    256
+#define TOOTH_LOG_BUFFER    512 //256
 
 #define SIZE_BYTE   8
 #define SIZE_INT    16

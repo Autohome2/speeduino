@@ -839,17 +839,19 @@ void sendToothLog(bool useChar)
   //Loop only needs to go to half the buffer size
   if (useChar)
   {
-    for (int x = 0; x < TOOTH_LOG_SIZE; x++)
+    for (int x = 0; x < (TOOTH_LOG_SIZE); x++)
     {
       Serial.println(tempToothHistory[x]);
     }
   }
   else
   {
-    for (int x = 0; x < TOOTH_LOG_SIZE; x++)
+    for (int x = 0; x < (TOOTH_LOG_SIZE); x++)
     {
       Serial.write(highByte(tempToothHistory[x]));
       Serial.write(lowByte(tempToothHistory[x]));
+      Serial.write(highByte(tempToothHistory[(x+256)]));
+      Serial.write(lowByte(tempToothHistory[(x+256)]));
     }
     BIT_CLEAR(currentStatus.squirt, BIT_SQUIRT_TOOTHLOG1READY);
   }
