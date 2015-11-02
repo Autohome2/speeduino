@@ -25,12 +25,15 @@ inline void addToothLogEntry(unsigned long time)
 {
   //High speed tooth logging history
   toothHistory[toothHistoryIndex] = curGap;
-  if(toothHistoryIndex == (TOOTH_LOG_BUFFER-1))
+   int cAngle = getCrankAngle(timePerDegree);
+   toothHistory[toothHistoryIndex+256] = cAngle;
+    toothHistory[toothHistoryIndex+512] = toothCurrentCount;   
+  if(toothHistoryIndex == (TOOTH_LOG_BUFFER-513))
   { toothHistoryIndex = 0; BIT_CLEAR(currentStatus.squirt, BIT_SQUIRT_TOOTHLOG1READY); } //The tooth log ready bit is cleared to ensure that we only get a set of concurrent values. 
   else
   { toothHistoryIndex++; }
-}
 
+}   
 /*
 As nearly all the decoders use a common method of determining RPM (The time the last full revolution took)
 A common function is simpler

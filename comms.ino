@@ -143,11 +143,18 @@ void command()
       break;
 
     case 'T': //Send 256 tooth log entries to Tuner Studios tooth logger
-      sendToothLog(false); //Sends tooth log values as ints
+      byte loggerID;
+      //byte canID;
+
+      //The first 2 bytes sent represent the canID and tableID
+      while (Serial.available() == 0) { }
+      loggerID = Serial.read(); //logger id specifies how many bytes to send
+      
+      sendToothLog(false,loggerID); //Sends tooth log values as ints
       break;
 
     case 'r': //Send 256 tooth log entries to a terminal emulator
-      sendToothLog(true); //Sends tooth log values as chars
+      sendToothLog(true,0); //Sends tooth log values as chars
       break;
 
     case '?':
@@ -194,7 +201,7 @@ This function returns the current values of a fixed group of variables
 */
 void sendValues(int length)
 {
-  byte packetSize = 33;
+  byte packetSize = 38;
   byte response[packetSize];
 
   response[0] = currentStatus.secl; //secl is simply a counter that increments each second. Used to track unexpected resets (Which will reset this count to 0)
@@ -238,6 +245,12 @@ void sendValues(int length)
   response[31] = lowByte(currentStatus.rpmDOT);
   response[32] = highByte(currentStatus.rpmDOT);
 
+  response[33] = currentStatus.vvt_duty1;         // current duty % for vvt channel 1
+  response[34] = currentStatus.vvt_duty2;         // current duty % for vvt channne 2
+  response[35] = currentStatus.idlepwm_duty;      // current idle pwm duty % out
+  response[36] = currentStatus.camAngleoffset;    // offset in deg from crank vs cam tdc
+  response[37] = currentStatus.camAngleoffset_2;  // offset in deg form crank vs cam tdc
+  
   Serial.write(response, (size_t)packetSize);
   //Serial.flush();
   return;
@@ -818,7 +831,7 @@ Send 256 tooth log entries
  * if useChar is true, the values are sent as chars to be printed out by a terminal emulator
  * if useChar is false, the values are sent as a 2 byte integer which is readable by TunerStudios tooth logger
 */
-void sendToothLog(bool useChar)
+void sendToothLog(bool useChar, byte LrID)
 {
   //We need TOOTH_LOG_SIZE number of records to send to TunerStudio. If there aren't that many in the buffer then we just return and wait for the next call
   if (toothHistoryIndex < TOOTH_LOG_SIZE) {
@@ -833,17 +846,20 @@ void sendToothLog(bool useChar)
   //Loop only needs to go to half the buffer size
   if (useChar)
   {
-    for (int x = 0; x < TOOTH_LOG_SIZE; x++)
+    for (int x = 0; x < (TOOTH_LOG_SIZE); x++)
     {
       Serial.println(tempToothHistory[x]);
     }
   }
   else
   {
-    for (int x = 0; x < TOOTH_LOG_SIZE; x++)
+    for (int x = 0; x < (TOOTH_LOG_SIZE); x++)
     {
       Serial.write(highByte(tempToothHistory[x]));
       Serial.write(lowByte(tempToothHistory[x]));
+      if (LrID == 2 || LrID == 3){Serial.write(highByte(tempToothHistory[(x+256)]));}
+      if (LrID == 2 || LrID == 3){Serial.write(lowByte(tempToothHistory[(x+256)]));}
+      if (LrID == 3){Serial.write(lowByte(tempToothHistory[(x+512)]));}
     }
     BIT_CLEAR(currentStatus.squirt, BIT_SQUIRT_TOOTHLOG1READY);
   }

@@ -34,7 +34,7 @@ const int map_page_size = 288;
 #define BIT_SQUIRT_TOOTHLOG2READY 7  //Used to flag if tooth log 2 is ready (Log is not currently used)
 
 #define TOOTH_LOG_SIZE      128
-#define TOOTH_LOG_BUFFER    256
+#define TOOTH_LOG_BUFFER    768 //256
 
 #define SIZE_BYTE   8
 #define SIZE_INT    16
@@ -82,6 +82,12 @@ struct statuses {
   int batADC;
   int O2ADC;
   int O2_2ADC;
+  byte boost_duty;
+  byte vvt_duty1;
+  byte vvt_duty2;
+  int camAngleoffset;
+  int camAngleoffset_2;
+  byte idlepwm_duty;
   int dwell;
   byte dwellCorrection; //The amount of correction being applied to the dwell time.
   byte battery10; //The current BRV in volts (multiplied by 10. Eg 12.5V = 125)
