@@ -64,7 +64,38 @@ void setPinMapping(byte boardID)
       pinFuelPump = 4; //Fuel pump output
       pinTachOut = 49; //Tacho output pin
       pinFlex = 19; // Flex sensor (Must be external interrupt enabled)
+      
+     //analog[0] =  100;    //old IAT
+     //analog[1] =  101;    //old CLT
+     //analog[2] =  102;    //old TPS
+     //analog[3] =  103;    //old MAP
+     //analog[4] =  104;    //old bat 
+     //analog[8] =  108;    //old o2 sensor
+     //analog[9] = 109;     //old 02_2 sensor
+       output[1] =  4;      //old fuelpump
+       output[2] =  46;     //old idle1
+       output[3] =  47;     //old idle2/fan
+       output[4] =  49;     //old tacho
+     //output[5] =  41;     //spare
+     //output[6] =  43;     //spare
+     //output[7] =  45;     //
+     //output[8] =  47;     //
+     //output[9] =  49;     //
+     //output[10] = 51;     //spare
+     //output[11] = 53;     //spare      
+     //input[1] = 12;       //old launch in
+     //input[2] = 19;       //old flex in
+     
+     //set function defaults : these are all output[x] values NOT pin numbers!
+      TachOutDefault = 4;
+      Idle1Default = 2;
+      Idle2Default = 3;
+      fuelPumpDefault = 1;
+      //VVT_1Default = 1;
+      fanDefault = 3;
+      //boostDefault = 4;      
       break;
+      
     case 1:
       //Pin mappings as per the v0.2 shield
       pinInjector1 = 8; //Output pin injector 1 is on
@@ -94,7 +125,38 @@ void setPinMapping(byte boardID)
       pinFan = 47; //Pin for the fan output
       pinFuelPump = 4; //Fuel pump output
       pinFlex = 2; // Flex sensor (Must be external interrupt enabled)
+            
+     //analog[0] =  100;    //old IAT
+     //analog[1] =  101;    //old CLT
+     //analog[2] =  102;    //old TPS
+     //analog[3] =  103;    //old MAP
+     //analog[4] =  104;    //old bat 
+     //analog[8] =  108;    //old o2 sensor
+     //analog[9] = 109;     //old 02_2 sensor
+       output[1] =  4;      //old fuelpump
+       output[2] =  30;     //old idle1
+       output[3] =  31;     //old idle2
+       output[4] =  47;     //old fan
+       output[5] =  49;     //old tacho
+     //output[6] =  43;     //spare
+     //output[7] =  45;     //
+     //output[8] =  47;     //
+     //output[9] =  49;     //
+     //output[10] = 51;     //spare
+     //output[11] = 53;     //spare      
+     //input[1] = 12;       //old launch in
+     //input[2] = 19;       //old flex in
+     
+     //set function defaults : these are all output[x] values NOT pin numbers!
+      TachOutDefault = 5;
+      Idle1Default = 2;
+      Idle2Default = 3;
+      fuelPumpDefault = 1;
+      //VVT_1Default = 1;
+      fanDefault = 4;
+      //boostDefault = 4;
       break;
+      
     case 2:
       //Pin mappings as per the v0.3 shield
       pinInjector1 = 8; //Output pin injector 1 is on
@@ -127,6 +189,36 @@ void setPinMapping(byte boardID)
       pinFan = A13; //Pin for the fan output
       pinLaunch = 12; //Can be overwritten below
       pinFlex = 2; // Flex sensor (Must be external interrupt enabled)
+      
+     //analog[0] =  100;    //old IAT
+     //analog[1] =  101;    //old CLT
+     //analog[2] =  102;    //old TPS
+     //analog[3] =  103;    //old MAP
+     //analog[4] =  104;    //old bat 
+     //analog[8] =  108;    //old o2 sensor
+     //analog[9] = 109;     //old 02_2 sensor
+       output[1] =  4;      //old fuelpump
+       output[2] =  5;      //old idle1
+       output[3] =  6;      //old vvt_1
+       output[4] =  7;      //old boost
+       output[5] =  49;     //old tacho
+       output[6] =  53;     //old idle2
+       output[7] =  113;     //old fan
+       //output[8] =  47;     //
+       //output[9] =  49;     //
+       //output[10] = 51;     //spare
+       //output[11] = 53;     //spare      
+     //input[1] = 12;       //old launch in
+     //input[2] = 2;        //old flex in
+     
+     //set function defaults : these are all output[x] values NOT pin numbers!
+      TachOutDefault = 5;
+      Idle1Default = 2;
+      Idle2Default = 6;
+      fuelPumpDefault = 1;
+      VVT_1Default = 3;
+      fanDefault = 7;
+      boostDefault = 4;
       break;
 
     case 3:
@@ -161,6 +253,36 @@ void setPinMapping(byte boardID)
       pinFan = 47; //Pin for the fan output (Goes to ULN2803)
       pinLaunch = 12; //Can be overwritten below
       pinFlex = 2; // Flex sensor (Must be external interrupt enabled)
+      
+     //analog[0] =  100;    //old IAT
+     //analog[1] =  101;    //old CLT
+     //analog[2] =  102;    //old TPS
+     //analog[3] =  103;    //old MAP
+     //analog[4] =  104;    //old bat 
+     //analog[8] =  108;    //old o2 sensor
+     //analog[9] = 109;     //old 02_2 sensor
+       output[1] =  4;      //old vvt
+       output[2] =  5;      //old idle1
+       output[3] =  6;      //old idle2
+       output[4] =  7;      //old boost
+       output[5] =  41;     //spare
+       output[6] =  43;     //spare
+       output[7] =  45;     //old fuel pump
+       output[8] =  47;     //old fan
+       output[9] =  49;     //old tacho
+       output[10] = 51;     //spare
+       output[11] = 53;     //spare      
+     //input[1] = 12;       //old launch in
+     //input[2] = 2;        //old flex in
+     
+     //set function defaults : these are all output[x] values NOT pin numbers!
+      TachOutDefault = 9;
+      Idle1Default = 2;
+      Idle2Default = 3;
+      fuelPumpDefault = 7;
+      VVT_1Default = 1;
+      fanDefault = 8;
+      boostDefault = 4;
       break;
 
     case 9:
@@ -193,6 +315,36 @@ void setPinMapping(byte boardID)
       pinFan = 47; //Pin for the fan output (Goes to ULN2803)
       pinLaunch = 12; //Can be overwritten below
       pinFlex = 2; // Flex sensor (Must be external interrupt enabled)
+            
+     //analog[0] =  100;    //old IAT
+     //analog[1] =  101;    //old CLT
+     //analog[2] =  102;    //old TPS
+     //analog[3] =  103;    //old MAP
+     //analog[4] =  104;    //old bat 
+     //analog[8] =  108;    //old o2 sensor
+     //analog[9] = 109;     //old 02_2 sensor
+       output[1] =  2;      //old idle1
+       output[2] =  3;      //old idle2
+       output[3] =  37;     //old fuelpump
+       output[4] =  47;     //old fan
+       output[5] =  49;     //old tacho
+       //output[6] =  43;     //spare
+       //output[7] =  45;     //old fuel pump
+       //output[8] =  47;     //old fan
+       //output[9] =  49;     //old tacho
+       //output[10] = 51;     //spare
+       //output[11] = 53;     //spare      
+     //input[1] = 12;       //old launch in
+     //input[2] = 2;        //old flex in
+     
+     //set function defaults : these are all output[x] values NOT pin numbers!
+      TachOutDefault = 5;
+      Idle1Default = 1;
+      Idle2Default = 2;
+      fuelPumpDefault = 3;
+      //VVT_1Default = 1;
+      fanDefault = 4;
+      //boostDefault = 4;
       break;
 
     case 10:
@@ -227,6 +379,36 @@ void setPinMapping(byte boardID)
       pinFan = 47; //Pin for the fan output
       pinTachOut = 49; //Tacho output pin
       pinFlex = 2; // Flex sensor (Must be external interrupt enabled)
+            
+     //analog[0] =  100;    //old IAT
+     //analog[1] =  101;    //old CLT
+     //analog[2] =  102;    //old TPS
+     //analog[3] =  103;    //old MAP
+     //analog[4] =  104;    //old bat 
+     //analog[8] =  108;    //old o2 sensor
+     //analog[9] = 109;     //old 02_2 sensor
+       output[1] =  41;      //old tacho
+       output[2] =  42;      //old fuelpump
+       output[3] =  47;      //old fan
+       output[4] =  49;      //old tacho
+       //output[5] =  41;     //spare
+       //output[6] =  43;     //spare
+       //output[7] =  45;     //old fuel pump
+       //output[8] =  47;     //old fan
+       //output[9] =  49;     //old tacho
+       //output[10] = 51;     //spare
+       //output[11] = 53;     //spare      
+     //input[1] = 12;       //old launch in
+     //input[2] = 2;        //old flex in
+     
+     //set function defaults : these are all output[x] values NOT pin numbers!
+      TachOutDefault = 1;
+      //Idle1Default = 2;
+      //Idle2Default = 3;
+      fuelPumpDefault = 2;
+      //VVT_1Default = 1;
+      fanDefault = 3;
+      //boostDefault = 4;
       break;
 
     case 20:
@@ -260,7 +442,38 @@ void setPinMapping(byte boardID)
       pinFan = 47; //Pin for the fan output
       pinFuelPump = 4; //Fuel pump output
       pinTachOut = 49; //Tacho output pin
-
+      
+     //analog[0] =  100;    //old IAT
+     //analog[1] =  101;    //old CLT
+     //analog[2] =  102;    //old TPS
+     //analog[3] =  103;    //old MAP
+     //analog[4] =  104;    //old bat 
+     //analog[8] =  108;    //old o2 sensor
+     //analog[9] = 109;     //old 02_2 sensor
+       output[1] =  4;      //old fuelpump/spare1
+       output[2] =  5;      //old spare2
+       output[3] =  6;      //old spare3
+       output[4] =  7;      //old spare4
+       output[5] =  47;     //old fan
+       output[6] =  49;     //old tacho
+       output[7] =  50;     //old spare5
+       output[8] =  52;     //old spare6
+       //output[9] =  49;     //
+       //output[10] = 51;     //
+       //output[11] = 53;     //      
+     //input[1] = 12;       //old launch in
+     //input[2] = 2;        //old flex in
+     
+     //set function defaults : these are all output[x] values NOT pin numbers!
+      TachOutDefault = 6;
+      //Idle1Default = 2;
+      //Idle2Default = 3;
+      fuelPumpDefault = 1;
+      //VVT_1Default = 1;
+      fanDefault = 5;
+      boostDefault = 4;
+      break;
+      
     case 30:
       //Pin mappings as per the dazv6 shield
       pinInjector1 = 8; //Output pin injector 1 is on
@@ -298,6 +511,35 @@ void setPinMapping(byte boardID)
       pinSpareLOut4 = 51;
       pinSpareLOut5 = 53;
       pinFan = 47; //Pin for the fan output
+
+    //analog[0] = 100;     //old IAT
+    //analog[1] = 101;     //old CLT
+    //analog[2] = 102;     //old TPS
+    //analog[3] = 103;     //old MAP
+    //analog[4] = 104;     //old Bat 
+    //analog[8] = 108;     //old O2 sensor
+    //analog[9] = 109;     //old 02_2 sensor
+      output[1] = 4;       //old hc1 spare
+      output[2] = 5;       //old idle1
+      output[3] = 6;       //old hc2 spare
+      output[4] = 7;       //old boost
+      output[5] = 41;      //spare
+      output[6] = 43;      //spare lc1
+      output[7] = 45;      //old fuel pump
+      output[8] = 47;      //old fan/lc2
+      output[9] = 49;      //old tacho/lc3
+      output[10] = 51;     //spare
+      output[11] = 53;     //spare
+      //input[1] = 12;     //old launch in
+      //input[2] = 2;      //old flex in
+      //set defaults
+      TachOutDefault = 9; // these are output[x] values not pins
+      Idle1Default = 2;
+//      Idle2Default = 6;
+      fuelPumpDefault = 7;
+//      VVT_1Default = 1;
+      fanDefault = 8;
+      boostDefault = 4;
       break;
 
     default:
@@ -326,6 +568,36 @@ void setPinMapping(byte boardID)
       pinFan = 47; //Pin for the fan output
       pinFuelPump = 4; //Fuel pump output
       pinTachOut = 49; //Tacho output pin
+            
+     //analog[0] =  100;    //old IAT
+     //analog[1] =  101;    //old CLT
+     //analog[2] =  102;    //old TPS
+     //analog[3] =  103;    //old MAP
+     //analog[4] =  104;    //old bat 
+     //analog[8] =  108;    //old o2 sensor
+     //analog[9] = 109;     //old 02_2 sensor
+       output[1] =  4;      //old fuelpump
+       output[2] =  47;      //old fan
+       output[3] =  49;      //old tacho
+     //output[4] =  7;      //
+     //output[5] =  41;     //spare
+     //output[6] =  43;     //spare
+     //output[7] =  45;     //
+     //output[8] =  47;     //
+     //output[9] =  49;     //
+     //output[10] = 51;     //
+     //output[11] = 53;     //      
+     //input[1] = 12;       //launch in
+     //input[2] = 2;        //old flex in
+     
+     //set function defaults : these are all output[x] values NOT pin numbers!
+      TachOutDefault = 3;
+      //Idle1Default = 2;
+      //Idle2Default = 3;
+      fuelPumpDefault = 1;
+      //VVT_1Default = 1;
+      fanDefault = 2;
+      //boostDefault = 4;
       break;
   }
 
@@ -333,24 +605,43 @@ void setPinMapping(byte boardID)
   if (configPage3.launchPin != 0) {
     pinLaunch = configPage3.launchPin;
   }
+
   if (configPage2.ignBypassPin != 0) {
     pinIgnBypass = configPage2.ignBypassPin;
   }
+
   if (configPage1.tachoPin != 0) {
-    pinTachOut = configPage1.tachoPin;
+   // pinTachOut = configPage1.tachoPin;
+    // lookup what output was selected in ts @ configPage1.tachoPin this gives a value 0== default , 1=output[1] etc etc
+    // lookup that value in boardtype to get basepinid number. so basepinid = output[configPage1.tachoPin]
+    // now get the actual mcuboard pin number with mcuBoardPin[basepinid]
+     pinTachOut = mcuBoardPin[(output[configPage1.tachoPin])];
   }
+  else {pinTachOut = TachOutDefault;}
+
   if (configPage2.fuelPumpPin != 0) {
-    pinFuelPump = configPage2.fuelPumpPin;
+    ;pinFuelPump = configPage2.fuelPumpPin;
+    pinFuelPump = mcuBoardPin[(output[configPage2.fuelPumpPin])];
   }
+  else {pinFuelPump = fuelPumpDefault;}
+
   if (configPage4.fanPin != 0) {
-    pinFan = configPage4.fanPin;
+    ;pinFan = configPage4.fanPin;
+    pinFan = mcuBoardPin[(output[configPage4.fanPin])];
   }
+  else {pinFan = fanDefault;}
+
   if (configPage3.boostPin != 0) {
-    pinBoost = configPage3.boostPin;
+    ;pinBoost = configPage3.boostPin;
+    pinBoost = mcuBoardPin[(output[configPage3.boostPin])];
   }
+  else {pinBoost = boostDefault;}
+
   if (configPage3.vvtPin != 0) {
-    pinVVT_1 = configPage3.vvtPin;
+    ;pinVVT_1 = configPage3.vvtPin;
+    pinVVT_1 = mcuBoardPin[(output[configPage3.vvtPin])];
   }
+  else {pinVVT_1 = VVT_1Default;}
 
   //Finally, set the relevant pin modes for outputs
   pinMode(pinCoil1, OUTPUT);
@@ -423,6 +714,48 @@ void setPinMapping(byte boardID)
   digitalWrite(pinMAP, HIGH);
   //digitalWrite(pinO2, LOW);
   digitalWrite(pinTPS, LOW);
+}
+
+void setMcuMapping(byte mcuID)
+{
+  //Assign ACTUAL mcu pins to the board pins
+  switch (mcuID)
+  {
+    case 0: //mega2560 OEM
+     //mcuBoardPin[4] = 100;    //old IAT
+     //mcuBoardPin[4] = 101;    //old CLT
+     //mcuBoardPin[4] = 102;    //old TPS
+     //mcuBoardPin[4] = 103;    //old MAP
+     //mcuBoardPin[4] = 104;    //old bat 
+     //mcuBoardPin[4] = 105;    //old o2 sensor
+     //mcuBoardPin[4] = 106;
+       mcuBoardPin[4] = 4;   //stdBoardPin4 = mcuboard pin 4  
+       mcuBoardPin[5] = 5;  
+       mcuBoardPin[6] = 6; 
+       mcuBoardPin[7] = 7;   //stdBoardPin7 = mcuboard pin 7
+       mcuBoardPin[41] = 41;
+       mcuBoardPin[43] = 43; 
+       mcuBoardPin[45] = 45;
+       mcuBoardPin[47] = 47;
+       mcuBoardPin[49] = 49; 
+       mcuBoardPin[51] = 51;
+       mcuBoardPin[53] = 53;      
+      //bPinIn1 = pinIN1 = 12;    //old launch in
+      //bPinIn2 = pinIN2 = 2;     //old flex in
+    break;
+    
+    case 1: //mega2561
+
+    break;
+    
+    case 16: //teensy3.5 OEM
+
+    break;        
+    
+    case 32: //stm32F
+
+    break;
+  }
 }
 
 /*

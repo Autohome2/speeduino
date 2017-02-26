@@ -139,6 +139,9 @@ volatile byte ign5_pin_mask;
 volatile byte *tach_pin_port;
 volatile byte tach_pin_mask;
 
+byte output[16];
+byte mcuBoardPin[100];
+
 //The status struct contains the current values for all 'live' variables
 //In current version this is 64 bytes
 struct statuses {
@@ -221,7 +224,8 @@ struct config1 {
   byte aseCount; //Afterstart enrichment cycles. This is the number of ignition cycles that the afterstart enrichment % lasts for
   byte wueValues[10]; //Warm up enrichment array (10 bytes)
   byte crankingPct; //Cranking enrichment
-  byte pinMapping; // The board / ping mapping to be used
+  byte pinMapping : 1; // The board / ping mapping to be used     now boardnametype in TS ini
+  byte boardType : 1; // main board type number
   byte tachoPin : 6; //Custom pin setting for tacho output
   byte tachoDiv : 2; //Whether to change the tacho speed
   byte tdePct; // TPS decelleration (%)
@@ -458,9 +462,11 @@ struct config4 {
 //Page 10 of the config mostly deals with CANBUS control
 //See ini file for further info (Config Page 10 in the ini)
 struct config10 {
-  byte unused10_0;
-  byte unused10_1;
-  byte unused10_2;
+  //byte unused10_0;
+  byte mcuMapping : 1;
+  //byte unused10_1;
+  //byte unused10_2;
+  byte mcuMappingname : 1;
   byte unused10_3;
   byte unused10_4;
   byte unused10_5;
@@ -645,6 +651,13 @@ byte pinStepperStep; //Step pin for the stepper motor driver
 byte pinLaunch;
 byte pinIgnBypass; //The pin used for an ignition bypass (Optional)
 byte pinFlex; //Pin with the flex sensor attached
+byte TachOutDefault ;
+byte Idle1Default ;
+byte Idle2Default ;
+byte fuelPumpDefault ;
+byte VVT_1Default ;
+byte fanDefault ;
+byte boostDefault ;
 
 // global variables // from speeduino.ino
 extern struct statuses currentStatus; // from speeduino.ino
