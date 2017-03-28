@@ -906,14 +906,6 @@ void loop()
     //The IAT and CLT readings can be done less frequently. This still runs about 4 times per second
     if ((mainLoopCount & 255) == 1) //Every 256 loops
     {
-      if (currentStatus.RPM == 0)
-      {
-        BIT_CLEAR(currentStatus.testenabled, 0);  //cleared when engine is off or stalled
-      }
-      else
-      {
-        BIT_SET(currentStatus.testenabled, 0);    //set if engine is running/cranking
-      }
        readCLT();
        readIAT();
        readO2();
@@ -922,7 +914,7 @@ void loop()
        vvtControl();
        idleControl(); //Perform any idle related actions. Even at higher frequencies, running 4x per second is sufficient.
     }
-    if(configPage4.iacAlgorithm == 4) { idleControl(); } //Run idlecontrol every loop for stepper idle.
+    if(configPage4.iacAlgorithm == IAC_ALGORITHM_STEP_OL || configPage4.iacAlgorithm == IAC_ALGORITHM_STEP_CL) { idleControl(); } //Run idlecontrol every loop for stepper idle.
 
     //Always check for sync
     //Main loop runs within this clause
