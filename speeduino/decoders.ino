@@ -21,8 +21,8 @@ toothLastToothTime - The time (In uS) that the last primary tooth was 'seen'
 
 */
 #include <limits.h>
-#include "decoders.h"
 #include "globals.h"
+#include "decoders.h"
 #include "scheduledIO.h"
 #include "scheduler.h"
 #include "crankMaths.h"
@@ -113,12 +113,30 @@ On decoders that are enabled for per tooth based timing adjustments, this functi
 For each ignition channel, a check is made whether we're at the relevant tooth and whether that ignition schedule is currently running
 Only if both these conditions are met will the schedule be updated with the latest timing information.
 */
-static inline void doPerToothTiming(uint16_t crankAngle)
-{
-  if ( (toothCurrentCount == ignition1EndTooth) && (ignitionSchedule1.Status == RUNNING) ) { IGN1_COMPARE = IGN1_COUNTER + uS_TO_TIMER_COMPARE( ((ignition1EndAngle - crankAngle) * timePerDegree) ); }
-  else if ( (toothCurrentCount == ignition2EndTooth) && (ignitionSchedule2.Status == RUNNING) ) { IGN2_COMPARE = IGN2_COUNTER + uS_TO_TIMER_COMPARE( ((ignition2EndAngle - crankAngle) * timePerDegree) ); }
-  else if ( (toothCurrentCount == ignition3EndTooth) && (ignitionSchedule3.Status == RUNNING) ) { IGN3_COMPARE = IGN3_COUNTER + uS_TO_TIMER_COMPARE( ((ignition3EndAngle - crankAngle) * timePerDegree) ); }
-  else if ( (toothCurrentCount == ignition4EndTooth) && (ignitionSchedule4.Status == RUNNING) ) { IGN4_COMPARE = IGN4_COUNTER + uS_TO_TIMER_COMPARE_SLOW( ((ignition4EndAngle - crankAngle) * timePerDegree) ); }
+#define checkPerToothTiming(crankAngle) \
+{ \
+  if ( (toothCurrentCount == ignition1EndTooth) ) \
+  { \
+    if( (ignitionSchedule1.Status == RUNNING) ) { IGN1_COMPARE = IGN1_COUNTER + uS_TO_TIMER_COMPARE( fastDegreesToUS( ignitionLimits( (ignition1EndAngle - crankAngle) ) ) ); } \
+    else { ignitionSchedule1.endCompare = IGN1_COUNTER + uS_TO_TIMER_COMPARE( fastDegreesToUS( ignitionLimits( (ignition1EndAngle - crankAngle) ) ) ); ignitionSchedule1.endScheduleSetByDecoder = true; } \
+  } \
+\
+  else if ( (toothCurrentCount == ignition2EndTooth) ) \
+  { \
+    if( (ignitionSchedule2.Status == RUNNING) ) { IGN2_COMPARE = IGN2_COUNTER + uS_TO_TIMER_COMPARE( fastDegreesToUS( ignitionLimits( (ignition2EndAngle - crankAngle) ) ) ); } \
+    else { ignitionSchedule2.endCompare = IGN2_COUNTER + uS_TO_TIMER_COMPARE( fastDegreesToUS( ignitionLimits( (ignition2EndAngle - crankAngle) ) ) ); ignitionSchedule2.endScheduleSetByDecoder = true; } \
+  } \
+\
+  else if ( (toothCurrentCount == ignition3EndTooth) ) \
+  { \
+    if( (ignitionSchedule3.Status == RUNNING) ) { IGN3_COMPARE = IGN3_COUNTER + uS_TO_TIMER_COMPARE( fastDegreesToUS( ignitionLimits( (ignition3EndAngle - crankAngle) ) ) ); } \
+    else { ignitionSchedule3.endCompare = IGN3_COUNTER + uS_TO_TIMER_COMPARE( fastDegreesToUS( ignitionLimits( (ignition3EndAngle - crankAngle) ) ) ); ignitionSchedule3.endScheduleSetByDecoder = true; } \
+  } \
+  else if ( (toothCurrentCount == ignition4EndTooth) ) \
+  { \
+    if( (ignitionSchedule4.Status == RUNNING) ) { IGN4_COMPARE = IGN4_COUNTER + uS_TO_TIMER_COMPARE( fastDegreesToUS( ignitionLimits( (ignition4EndAngle - crankAngle) ) ) ); } \
+    else { ignitionSchedule4.endCompare = IGN4_COUNTER + uS_TO_TIMER_COMPARE_SLOW( fastDegreesToUS( ignitionLimits( (ignition4EndAngle - crankAngle) ) ) ); ignitionSchedule4.endScheduleSetByDecoder = true; } \
+  } \
 }
 
 /*
@@ -164,6 +182,7 @@ void triggerPri_missingTooth()
 
        if ( (curGap > targetGap) || (toothCurrentCount > triggerActualTeeth) )
        {
+         //Missing tooth detected
          if(toothCurrentCount < (triggerActualTeeth) && (currentStatus.hasSync == true) ) 
          { 
             //This occurs when we're at tooth #1, but haven't seen all the other teeth. This indicates a signal issue so we flag lost sync so this will attempt to resync on the next revolution.
@@ -195,13 +214,19 @@ void triggerPri_missingTooth()
          toothLastToothTime = curTime;
          triggerToothAngleIsCorrect = true;
        }
+
      }
 
      //EXPERIMENTAL!
-     if(configPage2.perToothIgn == true)
+     if( (configPage2.perToothIgn == true) && (!BIT_CHECK(currentStatus.engine, BIT_ENGINE_CRANK)) ) 
      {
-       uint16_t crankAngle = ( (toothCurrentCount-1) * triggerToothAngle ) + configPage4.triggerAngle;
-       doPerToothTiming(crankAngle);
+       //ignition1EndTooth = 11;
+       //ignition1EndAngle = 0;
+       int16_t crankAngle = ( (toothCurrentCount-1) * triggerToothAngle ) + configPage4.triggerAngle;
+       //if ( (toothCurrentCount == ignition1EndTooth) && (ignitionSchedule1.Status == RUNNING) ) { IGN1_COMPARE = IGN1_COUNTER + uS_TO_TIMER_COMPARE( fastDegreesToUS( ignitionLimits( (ignition1EndAngle - crankAngle) ) ) ); }
+       //if ( (toothCurrentCount == ignition1EndTooth) && (ignitionSchedule1.Status == RUNNING) ) { IGN1_COMPARE = IGN1_COUNTER + uS_TO_TIMER_COMPARE( 9048 ); }
+       //else { if (toothCurrentCount == ignition1EndTooth) { ignitionSchedule1.endCompare = IGN1_COUNTER + uS_TO_TIMER_COMPARE( 9048 ); } }
+       checkPerToothTiming(crankAngle);
      }
    }
 }
@@ -292,28 +317,27 @@ int getCrankAngle_missingTooth()
 
 void triggerSetEndTeeth_missingTooth()
 {
-
   ignition1EndTooth = ( (ignition1EndAngle - configPage4.triggerAngle) / triggerToothAngle ) - 1;
   if(ignition1EndTooth > configPage4.triggerTeeth) { ignition1EndTooth -= configPage4.triggerTeeth; }
-  if(ignition1EndTooth <= 0) { ignition1EndTooth -= configPage4.triggerTeeth; }
+  if(ignition1EndTooth <= 0) { ignition1EndTooth += configPage4.triggerTeeth; }
   if(ignition1EndTooth > triggerActualTeeth) { ignition1EndTooth = triggerActualTeeth; }
 
   ignition2EndTooth = ( (ignition2EndAngle - configPage4.triggerAngle) / triggerToothAngle ) - 1;
   if(ignition2EndTooth > configPage4.triggerTeeth) { ignition2EndTooth -= configPage4.triggerTeeth; }
-  if(ignition2EndTooth <= 0) { ignition2EndTooth -= configPage4.triggerTeeth; }
+  if(ignition2EndTooth <= 0) { ignition2EndTooth += configPage4.triggerTeeth; }
   if(ignition2EndTooth > triggerActualTeeth) { ignition2EndTooth = triggerActualTeeth; }
 
   ignition3EndTooth = ( (ignition3EndAngle - configPage4.triggerAngle) / triggerToothAngle ) - 1;
   if(ignition3EndTooth > configPage4.triggerTeeth) { ignition3EndTooth -= configPage4.triggerTeeth; }
-  if(ignition3EndTooth <= 0) { ignition3EndTooth -= configPage4.triggerTeeth; }
+  if(ignition3EndTooth <= 0) { ignition3EndTooth += configPage4.triggerTeeth; }
   if(ignition3EndTooth > triggerActualTeeth) { ignition3EndTooth = triggerActualTeeth; }
 
   ignition4EndTooth = ( (ignition4EndAngle - configPage4.triggerAngle) / triggerToothAngle ) - 1;
   if(ignition4EndTooth > configPage4.triggerTeeth) { ignition4EndTooth -= configPage4.triggerTeeth; }
-  if(ignition4EndTooth <= 0) { ignition4EndTooth -= configPage4.triggerTeeth; }
+  if(ignition4EndTooth <= 0) { ignition4EndTooth += configPage4.triggerTeeth; }
   if(ignition4EndTooth > triggerActualTeeth) { ignition4EndTooth = triggerActualTeeth; }
 
-
+  lastToothCalcAdvance = currentStatus.advance;
 }
 
 /* -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -365,7 +389,7 @@ void triggerPri_DualWheel()
      if(configPage2.perToothIgn == true)
      {
        uint16_t crankAngle = ( (toothCurrentCount-1) * triggerToothAngle ) + configPage4.triggerAngle;
-       doPerToothTiming(crankAngle);
+       checkPerToothTiming(crankAngle);
      }
    } //TRigger filter
 
@@ -446,23 +470,25 @@ void triggerSetEndTeeth_DualWheel()
 {
   ignition1EndTooth = ( (ignition1EndAngle - configPage4.triggerAngle) / triggerToothAngle ) - 1;
   if(ignition1EndTooth > configPage4.triggerTeeth) { ignition1EndTooth -= configPage4.triggerTeeth; }
-  if(ignition1EndTooth <= 0) { ignition1EndTooth -= configPage4.triggerTeeth; }
+  if(ignition1EndTooth <= 0) { ignition1EndTooth += configPage4.triggerTeeth; }
   if(ignition1EndTooth > triggerActualTeeth) { ignition1EndTooth = triggerActualTeeth; }
 
   ignition2EndTooth = ( (ignition2EndAngle - configPage4.triggerAngle) / triggerToothAngle ) - 1;
   if(ignition2EndTooth > configPage4.triggerTeeth) { ignition2EndTooth -= configPage4.triggerTeeth; }
-  if(ignition2EndTooth <= 0) { ignition2EndTooth -= configPage4.triggerTeeth; }
+  if(ignition2EndTooth <= 0) { ignition2EndTooth += configPage4.triggerTeeth; }
   if(ignition2EndTooth > triggerActualTeeth) { ignition2EndTooth = triggerActualTeeth; }
 
   ignition3EndTooth = ( (ignition3EndAngle - configPage4.triggerAngle) / triggerToothAngle ) - 1;
   if(ignition3EndTooth > configPage4.triggerTeeth) { ignition3EndTooth -= configPage4.triggerTeeth; }
-  if(ignition3EndTooth <= 0) { ignition3EndTooth -= configPage4.triggerTeeth; }
+  if(ignition3EndTooth <= 0) { ignition3EndTooth += configPage4.triggerTeeth; }
   if(ignition3EndTooth > triggerActualTeeth) { ignition3EndTooth = triggerActualTeeth; }
 
   ignition4EndTooth = ( (ignition4EndAngle - configPage4.triggerAngle) / triggerToothAngle ) - 1;
   if(ignition4EndTooth > configPage4.triggerTeeth) { ignition4EndTooth -= configPage4.triggerTeeth; }
-  if(ignition4EndTooth <= 0) { ignition4EndTooth -= configPage4.triggerTeeth; }
+  if(ignition4EndTooth <= 0) { ignition4EndTooth += configPage4.triggerTeeth; }
   if(ignition4EndTooth > triggerActualTeeth) { ignition4EndTooth = triggerActualTeeth; }
+
+  lastToothCalcAdvance = currentStatus.advance;
 }
 
 
@@ -522,15 +548,7 @@ void triggerPri_BasicDistributor()
     if(configPage2.perToothIgn == true)
     {
       uint16_t crankAngle = ( (toothCurrentCount-1) * triggerToothAngle ) + configPage4.triggerAngle;
-      if ( (toothCurrentCount == ignition1EndTooth) && (ignitionSchedule1.Status == RUNNING) )
-      {
-        IGN1_COMPARE = IGN1_COUNTER + uS_TO_TIMER_COMPARE( ((ignition1EndAngle - crankAngle) * timePerDegree) );
-        //IGN1_COMPARE = IGN1_COUNTER + uS_TO_TIMER_COMPARE( (ignition1EndAngle - crankAngle)*my_timePerDegree - micros_compensation );
-
-      }
-      else if ( (toothCurrentCount == ignition2EndTooth) && (ignitionSchedule2.Status == RUNNING) ) { IGN2_COMPARE = IGN2_COUNTER + uS_TO_TIMER_COMPARE( ((ignition2EndAngle - crankAngle) * timePerDegree) ); }
-      else if ( (toothCurrentCount == ignition3EndTooth) && (ignitionSchedule3.Status == RUNNING) ) { IGN3_COMPARE = IGN3_COUNTER + uS_TO_TIMER_COMPARE( ((ignition3EndAngle - crankAngle) * timePerDegree) ); }
-      else if ( (toothCurrentCount == ignition4EndTooth) && (ignitionSchedule4.Status == RUNNING) ) { IGN4_COMPARE = IGN4_COUNTER + uS_TO_TIMER_COMPARE( ((ignition4EndAngle - crankAngle) * timePerDegree) ); }
+      checkPerToothTiming(crankAngle);
     }
 
     toothLastMinusOneToothTime = toothLastToothTime;
@@ -582,8 +600,10 @@ void triggerSetEndTeeth_BasicDistributor()
 {
   ignition1EndTooth = ( (ignition1EndAngle - configPage4.triggerAngle) / triggerToothAngle ) - 1;
   if(ignition1EndTooth > configPage4.triggerTeeth) { ignition1EndTooth -= configPage4.triggerTeeth; }
-  if(ignition1EndTooth <= 0) { ignition1EndTooth -= configPage4.triggerTeeth; }
+  if(ignition1EndTooth <= 0) { ignition1EndTooth += configPage4.triggerTeeth; }
   if(ignition1EndTooth > triggerActualTeeth) { ignition1EndTooth = triggerActualTeeth; }
+
+  lastToothCalcAdvance = currentStatus.advance;
 }
 
 /* -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -680,6 +700,7 @@ int getCrankAngle_GM7X()
 void triggerSetEndTeeth_GM7X()
 {
 
+  lastToothCalcAdvance = currentStatus.advance;
 }
 
 
@@ -735,7 +756,7 @@ void triggerSetup_4G63()
     toothAngles[6] = 535; //Falling edge of tooth #2
     toothAngles[7] = 645; //Rising edge of tooth #1
 
-    triggerActualTeeth = 4;
+    triggerActualTeeth = 8;
   }
   /*
    * https://forums.libreems.org/attachment.php?aid=34
@@ -910,7 +931,7 @@ void triggerPri_4G63()
         if(configPage2.nCylinders == 4)
         {
           uint16_t crankAngle = toothAngles[(toothCurrentCount-1)];
-          doPerToothTiming(crankAngle);
+          checkPerToothTiming(crankAngle);
         }
       }
     } //Has sync
@@ -935,7 +956,7 @@ void triggerPri_4G63()
         else if( (READ_SEC_TRIGGER() == true) && (revolutionOne == true) ) 
         { 
           //Crank is low, cam is high and the crank pulse STARTED when the cam was high. 
-          if(configPage2.nCylinders == 4) { toothCurrentCount = 1; } //Means we're at 5* BTDC on a 4G63 4 cylinder
+          if(configPage2.nCylinders == 4) { toothCurrentCount = 5; } //Means we're at 5* BTDC on a 4G63 4 cylinder
           else if(configPage2.nCylinders == 6) { toothCurrentCount = 2; currentStatus.hasSync = true; } //Means we're at 45* ATDC on 6G72 6 cylinder
         } 
       }
@@ -975,11 +996,11 @@ void triggerSec_4G63()
 
       triggerFilterTime = 1500; //If this is removed, can have trouble getting sync again after the engine is turned off (but ECU not reset).
       triggerSecFilterTime = triggerSecFilterTime >> 1; //Divide the secondary filter time by 2 again, making it 25%. Only needed when cranking
-      if(READ_PRI_TRIGGER() == true)// && (crankState == digitalRead(pinTrigger)))
+      if(READ_PRI_TRIGGER() == true)
       {
         if(configPage2.nCylinders == 4)
         { 
-          if(toothCurrentCount == 4) { currentStatus.hasSync = true; }
+          if(toothCurrentCount == 8) { currentStatus.hasSync = true; } //Is 8 for sequential, was 4
         }
         else if(configPage2.nCylinders == 6) 
         { 
@@ -991,32 +1012,31 @@ void triggerSec_4G63()
       {
         if(configPage2.nCylinders == 4)
         { 
-          if(toothCurrentCount == 1) { currentStatus.hasSync = true; }
+          if(toothCurrentCount == 5) { currentStatus.hasSync = true; } //Is 5 for sequential, was 1
         }
         //Cannot gain sync for 6 cylinder here. 
       }
     }
 
     //if ( (micros() - secondaryLastToothTime1) < triggerSecFilterTime_duration && configPage2.useResync )
-    if ( (configPage4.useResync == 1) && (currentStatus.hasSync == true) && (configPage2.nCylinders == 4) )
+    if ( (currentStatus.RPM < currentStatus.crankRPM) || (configPage4.useResync == 1) )
     {
-      triggerSecFilterTime_duration = (micros() - secondaryLastToothTime1) >> 1;
-      if(READ_PRI_TRIGGER() == true)// && (crankState == digitalRead(pinTrigger)))
+      if( (currentStatus.hasSync == true) && (configPage2.nCylinders == 4) )
       {
-        if( (currentStatus.RPM < currentStatus.crankRPM) || true )
+        triggerSecFilterTime_duration = (micros() - secondaryLastToothTime1) >> 1;
+        if(READ_PRI_TRIGGER() == true)
         {
           //Whilst we're cranking and have sync, we need to watch for noise pulses.
-          if(toothCurrentCount != 4) 
+          if(toothCurrentCount != 8) 
           { 
             // This should never be true, except when there's noise
             currentStatus.hasSync = false; 
             currentStatus.syncLossCounter++;
           } 
-          else { toothCurrentCount = 4; } //Why? Just why?
+          else { toothCurrentCount = 8; } //Why? Just why?
         }
-        else { toothCurrentCount = 4; } //If the crank trigger is currently HIGH, it means we're on tooth #1
-      }
-    } // Use resync
+      } //Has sync and 4 cylinder 
+    } // Use resync or cranking
   } //Trigger filter
 }
 
@@ -1047,7 +1067,7 @@ uint16_t getRPM_4G63()
     }
     else
     {
-      if(configPage2.nCylinders == 4) { tempRPM = stdGetRPM(360); }
+      if(configPage2.nCylinders == 4) { tempRPM = stdGetRPM(720); }
       else if(configPage2.nCylinders == 6) { tempRPM = stdGetRPM(720); }
       //EXPERIMENTAL! Add/subtract RPM based on the last rpmDOT calc
       //tempRPM += (micros() - toothOneTime) * currentStatus.rpmDOT
@@ -1093,6 +1113,8 @@ void triggerSetEndTeeth_4G63()
   else { ignition1EndTooth = 4; }
   //ignition1EndTooth = 1;
   //ignition1EndTooth = ( (ignition1EndAngle - configPage4.triggerAngle) /
+
+  lastToothCalcAdvance = currentStatus.advance;
 }
 
 /* -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1212,6 +1234,8 @@ int getCrankAngle_24X()
 void triggerSetEndTeeth_24X()
 {
 
+
+  lastToothCalcAdvance = currentStatus.advance;
 }
 
 /* -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1314,6 +1338,7 @@ int getCrankAngle_Jeep2000()
 void triggerSetEndTeeth_Jeep2000()
 {
 
+  lastToothCalcAdvance = currentStatus.advance;
 }
 
 /* -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1432,7 +1457,7 @@ int getCrankAngle_Audi135()
 
 void triggerSetEndTeeth_Audi135()
 {
-
+  lastToothCalcAdvance = currentStatus.advance;
 }
 
 /* -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1530,7 +1555,7 @@ int getCrankAngle_HondaD17()
 
 void triggerSetEndTeeth_HondaD17()
 {
-
+  lastToothCalcAdvance = currentStatus.advance;
 }
 
 /* -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1736,7 +1761,7 @@ int getCrankAngle_Miata9905()
 
 void triggerSetEndTeeth_Miata9905()
 {
-
+  lastToothCalcAdvance = currentStatus.advance;
 }
 
 /* -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1831,8 +1856,6 @@ void triggerSec_MazdaAU()
     }
     secondaryToothCount++;
   }
-
-  return;
 }
 
 
@@ -1890,7 +1913,7 @@ int getCrankAngle_MazdaAU()
 
 void triggerSetEndTeeth_MazdaAU()
 {
-
+  lastToothCalcAdvance = currentStatus.advance;
 }
 
 /*
@@ -1963,7 +1986,7 @@ int getCrankAngle_non360()
 
 void triggerSetEndTeeth_Non360()
 {
-
+  lastToothCalcAdvance = currentStatus.advance;
 }
 
 /* -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -2013,7 +2036,7 @@ void triggerPri_Nissan360()
        int16_t crankAngle = ( (toothCurrentCount-1) * 2 ) + configPage4.triggerAngle;
        //if(crankAngle > CRANK_ANGLE_MAX_IGN) { crankAngle -= CRANK_ANGLE_MAX_IGN; }
        //if(crankAngle < CRANK_ANGLE_MAX_IGN) {
-       doPerToothTiming(crankAngle);
+       checkPerToothTiming(crankAngle);
      }
 
      timePerDegree = curGap >> 1;; //The time per crank degree is simply the time between this tooth and the last one divided by 2
@@ -2172,6 +2195,8 @@ void triggerSetEndTeeth_Nissan360()
   ignition2EndTooth = ( (ignition2EndAngle - configPage4.triggerAngle) / 2 ) - 4;
   ignition3EndTooth = ( (ignition3EndAngle - configPage4.triggerAngle) / 2 ) - 4;
   ignition4EndTooth = ( (ignition4EndAngle - configPage4.triggerAngle) / 2 ) - 4;
+
+  lastToothCalcAdvance = currentStatus.advance;
 }
 
 /* -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -2331,7 +2356,7 @@ int getCrankAngle_Subaru67()
 
 void triggerSetEndTeeth_Subaru67()
 {
-
+  lastToothCalcAdvance = currentStatus.advance;
 }
 
 /* -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -2494,7 +2519,7 @@ int getCrankAngle_Daihatsu()
 
 void triggerSetEndTeeth_Daihatsu()
 {
-
+  lastToothCalcAdvance = currentStatus.advance;
 }
 
 /* -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -2633,7 +2658,7 @@ int getCrankAngle_Harley()
 
 void triggerSetEndTeeth_Harley()
 {
-
+  lastToothCalcAdvance = currentStatus.advance;
 }
 
 //************************************************************************************************************************
@@ -2730,7 +2755,7 @@ void triggerPri_ThirtySixMinus222()
      if(configPage2.perToothIgn == true)
      {
        uint16_t crankAngle = ( (toothCurrentCount-1) * triggerToothAngle ) + configPage4.triggerAngle;
-       doPerToothTiming(crankAngle);
+       checkPerToothTiming(crankAngle);
      }
 
    }
@@ -2749,7 +2774,6 @@ int getCrankAngle_ThirtySixMinus222()
 
 void triggerSetEndTeeth_ThirtySixMinus222()
 {
-
   if(currentStatus.advance < 10) { ignition1EndTooth = 36; }
   else if(currentStatus.advance < 20) { ignition1EndTooth = 35; }
   else if(currentStatus.advance < 30) { ignition1EndTooth = 34; }
@@ -2758,6 +2782,5 @@ void triggerSetEndTeeth_ThirtySixMinus222()
   if(currentStatus.advance < 30) { ignition2EndTooth = 16; }
   else { ignition2EndTooth = 13; }
 
-
-
+  lastToothCalcAdvance = currentStatus.advance;
 }
