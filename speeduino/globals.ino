@@ -126,7 +126,11 @@ byte secondaryTriggerEdge;
 int CRANK_ANGLE_MAX = 720;
 int CRANK_ANGLE_MAX_IGN = 360;
 int CRANK_ANGLE_MAX_INJ = 360; //The number of crank degrees that the system track over. 360 for wasted / timed batch and 720 for sequential
-volatile uint16_t runSecsX10;
+volatile uint32_t runSecsX10;
+volatile byte HWTest_INJ = 0; /**< Each bit in this variable represents one of the injector channels and it's HW test status */
+volatile byte HWTest_INJ_50pc = 0; /**< Each bit in this variable represents one of the injector channels and it's 50% HW test status */
+volatile byte HWTest_IGN = 0; /**< Each bit in this variable represents one of the ignition channels and it's HW test status */
+volatile byte HWTest_IGN_50pc = 0; 
 
 
 //This needs to be here because using the config page directly can prevent burning the setting
@@ -138,12 +142,12 @@ volatile byte LOOP_TIMER;
 
 byte pinInjector1; //Output pin injector 1
 byte pinInjector2; //Output pin injector 2
-byte pinInjector3; //Output pin injector 3 is on
-byte pinInjector4; //Output pin injector 4 is on
-byte pinInjector5; //Output pin injector 5 NOT USED YET
-byte pinInjector6; //Placeholder only - NOT USED
-byte pinInjector7; //Placeholder only - NOT USED
-byte pinInjector8; //Placeholder only - NOT USED
+byte pinInjector3; //Output pin injector 3
+byte pinInjector4; //Output pin injector 4
+byte pinInjector5; //Output pin injector 5
+byte pinInjector6; //Output pin injector 6
+byte pinInjector7; //Output pin injector 7
+byte pinInjector8; //Output pin injector 8
 byte pinCoil1; //Pin for coil 1
 byte pinCoil2; //Pin for coil 2
 byte pinCoil3; //Pin for coil 3
@@ -197,6 +201,7 @@ byte pinStepperEnable; //Turning the DRV8825 driver on/off
 byte pinLaunch;
 byte pinIgnBypass; //The pin used for an ignition bypass (Optional)
 byte pinFlex; //Pin with the flex sensor attached
+byte pinVSS;
 byte pinBaro; //Pin that an al barometric pressure sensor is attached to (If used)
 byte pinResetControl; // Output pin used control resetting the Arduino
 #ifdef USE_MC33810
