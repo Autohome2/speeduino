@@ -249,7 +249,7 @@ void command()
       break;
 
     case 'Q': // send code version
-      Serial.print(F("speeduino 202003-dev"));
+      Serial.print(F("speeduino 202005"));
       break;
 
     case 'r': //New format for the optimised OutputChannels
@@ -279,7 +279,7 @@ void command()
       break;
 
     case 'S': // send code version
-      Serial.print(F("Speeduino 2020.03-dev"));
+      Serial.print(F("Speeduino 2020.05"));
       currentStatus.secl = 0; //This is required in TS3 due to its stricter timings
       break;
 
@@ -654,7 +654,9 @@ void sendValues(uint16_t offset, uint16_t packetLength, byte cmd, byte portNum)
   for(byte x=0; x<packetLength; x++)
   {
     if (portNum == 0) { Serial.write(fullStatus[offset+x]); }
-    else if (portNum == 3){ CANSerial.write(fullStatus[offset+x]); }
+    #if defined(CANSerial_AVAILABLE)
+      else if (portNum == 3){ CANSerial.write(fullStatus[offset+x]); }
+    #endif
   }
 
   // Reset any flags that are being used to trigger page refreshes
