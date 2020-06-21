@@ -322,7 +322,7 @@ void doUpdates()
     //Introdced a DFCO delay option. Default it to 0
     configPage2.dfcoDelay = 0;
     //Introdced a minimum temperature for DFCO. Default it to 40C
-    configPage2.dfcoMinCLT = 40;
+    configPage2.dfcoMinCLT = 80; //CALIBRATION_TEMPERATURE_OFFSET is 40
 
     //Update flexfuel ignition config values for 40 degrees offset
     for (int i=0; i<6; i++)
@@ -352,11 +352,33 @@ void doUpdates()
     //Cranking enrichment to run taper added. Default it to 0,1 secs
     configPage10.crankingEnrichTaper = 1;
     
+    //ASE to run taper added. Default it to 0,1 secs
+    configPage2.aseTaperTime = 1;
+
     writeAllConfig();
     EEPROM.write(EEPROM_DATA_VERSION, 14);
 
     // there is now optioon for fixed and relative timing retard for soft limit. This sets the soft limiter to the old fixed timing mode.
     configPage2.SoftLimitMode = SOFT_LIMIT_FIXED;
+  }
+
+  if(EEPROM.read(EEPROM_DATA_VERSION) == 14)
+  {
+    //202006
+
+    //MAJOR update to move the coolant, IAT and O2 calibrations to 2D tables
+    int y;
+    for(int x=0; x<(CALIBRATION_TABLE_SIZE/16); x++) //Each calibration table is 512 bytes long
+    {
+      y = EEPROM_CALIBRATION_CLT + (x * 16);
+      cltCalibration_values[x] = EEPROM.read(y);
+      cltCalibration_bins[x] = (x * 16);
+
+      y = EEPROM_CALIBRATION_IAT + (x * 16);
+      iatCalibration_values[x] = EEPROM.read(y);
+      iatCalibration_bins[x] = (x * 16);
+    }
+
   }
   
   //Final check is always for 255 and 0 (Brand new arduino)
