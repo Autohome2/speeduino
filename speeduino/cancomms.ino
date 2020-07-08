@@ -293,7 +293,7 @@ void can_Command()
       {
         // PID mode 0 , realtime data stream
         obd_response(inMsg.buf[1], inMsg.buf[2], 0);     // get the obd response based on the data in byte2
-        outMsg.id = (0x7E8);//(configPage9.obd_address+8);
+        outMsg.id = (0x7E8);       //((configPage9.obd_address + 0x100)+ 8);  
         Can0.write(outMsg);       // send the 8 bytes of obd data   
       }
     if (inMsg.buf[1] == 0x22)
@@ -393,87 +393,99 @@ void obd_response(uint8_t thePIDmode, uint8_t therequestedPIDlow, uint8_t thereq
   outMsg.len = 8;
   
 if (thePIDmode == 0x01)
-    {
-      currentStatus.canin[13] = therequestedPIDlow; 
-     switch (therequestedPIDlow)
-           {
-           case 0:       //PID-0x00 PIDs supported 01-20  
-              outMsg.buf[0] =  0x06;    // sending 6 bytes
-              outMsg.buf[1] =  0x41;    // Same as query, except that 40h is added to the mode value. So:41h = show current data ,42h = freeze frame ,etc.
-              outMsg.buf[2] =  0x00;    // PID code
-              outMsg.buf[3] =  0x08;   //B0000 1000   1-8
-              outMsg.buf[4] =  B00110110;   //9-16
-              outMsg.buf[5] =  B10100000;   //17-24
-              outMsg.buf[6] =  B00010001;   //17-32
-              outMsg.buf[7] =  B00000000;   
-           break;
+  {
+     //currentStatus.canin[13] = therequestedPIDlow; 
+   switch (therequestedPIDlow)
+         {
+          case 0:       //PID-0x00 PIDs supported 01-20  
+            outMsg.buf[0] =  0x06;    // sending 6 bytes
+            outMsg.buf[1] =  0x41;    // Same as query, except that 40h is added to the mode value. So:41h = show current data ,42h = freeze frame ,etc.
+            outMsg.buf[2] =  0x00;    // PID code
+            outMsg.buf[3] =  0x08;   //B0000 1000   1-8
+            outMsg.buf[4] =  B00111110;   //9-16
+            outMsg.buf[5] =  B10100000;   //17-24
+            outMsg.buf[6] =  B00010001;   //17-32
+            outMsg.buf[7] =  B00000000;   
+          break;
 
-           case 5:      //PID-0x05 Engine coolant temperature , range is -40 to 215 deg C , formula == A-40
-              outMsg.buf[0] =  0x03;                 // sending 3 bytes
-              outMsg.buf[1] =  0x41;                 // Same as query, except that 40h is added to the mode value. So:41h = show current data ,42h = freeze frame ,etc.
-              outMsg.buf[2] =  0x05;                 // pid code
-              outMsg.buf[3] =  (byte)(currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET);   //the data value A
-              outMsg.buf[4] =  0x00;                 //the data value B which is 0 as unused
-              outMsg.buf[5] =  0x00; 
-              outMsg.buf[6] =  0x00; 
-              outMsg.buf[7] =  0x00;
+          case 5:      //PID-0x05 Engine coolant temperature , range is -40 to 215 deg C , formula == A-40
+            outMsg.buf[0] =  0x03;                 // sending 3 bytes
+            outMsg.buf[1] =  0x41;                 // Same as query, except that 40h is added to the mode value. So:41h = show current data ,42h = freeze frame ,etc.
+            outMsg.buf[2] =  0x05;                 // pid code
+            outMsg.buf[3] =  (byte)(currentStatus.coolant + CALIBRATION_TEMPERATURE_OFFSET);   //the data value A
+            outMsg.buf[4] =  0x00;                 //the data value B which is 0 as unused
+            outMsg.buf[5] =  0x00; 
+            outMsg.buf[6] =  0x00; 
+            outMsg.buf[7] =  0x00;
           break;
          
           case 11:        // PID-0x0B , MAP , range is 0 to 255 kPa , Formula == A
-              uint16_t temp_engineMap;
-              temp_engineMap = (highByte(currentStatus.MAP - currentStatus.baro)<<8) | lowByte(currentStatus.MAP - currentStatus.baro);
-              outMsg.buf[0] =  0x03;    // sending 3 byte
-              outMsg.buf[1] =  0x41;    // 
-              outMsg.buf[2] =  0x0B;    // pid code
-              outMsg.buf[3] =  temp_engineMap;    // absolute map is map gauge value - baro , baro is 100ish 
-              outMsg.buf[4] =  0x00;
-              outMsg.buf[5] =  0x00; 
-              outMsg.buf[6] =  0x00; 
-              outMsg.buf[7] =  0x00;
-              //currentStatus.canin[13] = currentStatus.baro;
-              //currentStatus.canin[11] = currentStatus.MAP;
+            uint16_t temp_engineMap;
+            temp_engineMap = (highByte(currentStatus.MAP - currentStatus.baro)<<8) | lowByte(currentStatus.MAP - currentStatus.baro);
+            outMsg.buf[0] =  0x03;    // sending 3 byte
+            outMsg.buf[1] =  0x41;    // 
+            outMsg.buf[2] =  0x0B;    // pid code
+            outMsg.buf[3] =  temp_engineMap;    // absolute map is map gauge value - baro , baro is 100ish 
+            outMsg.buf[4] =  0x00;
+            outMsg.buf[5] =  0x00; 
+            outMsg.buf[6] =  0x00; 
+            outMsg.buf[7] =  0x00;
+            //currentStatus.canin[13] = currentStatus.baro;
+            //currentStatus.canin[11] = currentStatus.MAP;
           break;
 
-  case 12:        // PID-0x0C , RPM  , range is 0 to 16383.75 rpm , Formula == 256A+B / 4
-      uint16_t temp_revs; 
-      temp_revs = currentStatus.RPM << 2 ;      //
-      outMsg.buf[0] = 0x04;                        // sending 4 byte
-      outMsg.buf[1] = 0x41;                        // 
-      outMsg.buf[2] = 0x0C;                        // pid code
-      outMsg.buf[3] = highByte(temp_revs);         //obdcalcB; A
-      outMsg.buf[4] = lowByte(temp_revs);          //obdcalcD; B
-      outMsg.buf[5] = 0x00; 
-      outMsg.buf[6] = 0x00; 
-      outMsg.buf[7] = 0x00;
-   break;
+          case 12:        // PID-0x0C , RPM  , range is 0 to 16383.75 rpm , Formula == 256A+B / 4
+            uint16_t temp_revs; 
+            temp_revs = currentStatus.RPM << 2 ;      //
+            outMsg.buf[0] = 0x04;                        // sending 4 byte
+            outMsg.buf[1] = 0x41;                        // 
+            outMsg.buf[2] = 0x0C;                        // pid code
+            outMsg.buf[3] = highByte(temp_revs);         //obdcalcB; A
+            outMsg.buf[4] = lowByte(temp_revs);          //obdcalcD; B
+            outMsg.buf[5] = 0x00; 
+            outMsg.buf[6] = 0x00; 
+            outMsg.buf[7] = 0x00;
+          break;
 
-  case 14:      //PID-0x0E , Ignition Timing advance, range is -64 to 63.5 BTDC , formula == A/2 - 64 
-     int8_t temp_timingadvance;
-     temp_timingadvance = ((currentStatus.advance + 64) << 1);
-     //obdcalcA = ((timingadvance + 64) <<1) ; //((timingadvance + 64) *2)
-     outMsg.buf[0] =  0x03;                     // sending 3 bytes
-     outMsg.buf[1] =  0x41;                     // Same as query, except that 40h is added to the mode value. So:41h = show current data ,42h = freeze frame ,etc.
-     outMsg.buf[2] =  0x0E;                     // pid code
-     outMsg.buf[3] =  temp_timingadvance;       // A
-     outMsg.buf[4] =  0x00;                     // B
-     outMsg.buf[5] =  0x00; 
-     outMsg.buf[6] =  0x00; 
-     outMsg.buf[7] =  0x00;
-   break;
+          case 13:        //PID-0x0D , Vehicle speed , range is 0 to 255 km/h , formula == A 
+            uint8_t temp_vehiclespeed;
+            temp_vehiclespeed = 120;               // TEST VALUE !!!!!   
+            outMsg.buf[0] =  0x03;                    // sending 3 bytes
+            outMsg.buf[1] =  0x41;                    // Same as query, except that 40h is added to the mode value. So:41h = show current data ,42h = freeze frame ,etc.
+            outMsg.buf[2] =  0x0D;                    // pid code
+            outMsg.buf[3] =  temp_vehiclespeed;       // A
+            outMsg.buf[4] =  0x00;                    // B
+            outMsg.buf[5] =  0x00; 
+            outMsg.buf[6] =  0x00; 
+            outMsg.buf[7] =  0x00;
+          break;
 
+          case 14:      //PID-0x0E , Ignition Timing advance, range is -64 to 63.5 BTDC , formula == A/2 - 64 
+            int8_t temp_timingadvance;
+            temp_timingadvance = ((currentStatus.advance + 64) << 1);
+            //obdcalcA = ((timingadvance + 64) <<1) ; //((timingadvance + 64) *2)
+            outMsg.buf[0] =  0x03;                     // sending 3 bytes
+            outMsg.buf[1] =  0x41;                     // Same as query, except that 40h is added to the mode value. So:41h = show current data ,42h = freeze frame ,etc.
+            outMsg.buf[2] =  0x0E;                     // pid code
+            outMsg.buf[3] =  temp_timingadvance;       // A
+            outMsg.buf[4] =  0x00;                     // B
+            outMsg.buf[5] =  0x00; 
+            outMsg.buf[6] =  0x00; 
+            outMsg.buf[7] =  0x00;
+          break;
 
-  case 15:      //PID-0x0F , Inlet air temperature , range is -40 to 215 deg C, formula == A-40 
-      outMsg.buf[0] =  0x03;                                                         // sending 3 bytes
-      outMsg.buf[1] =  0x41;                                                         // Same as query, except that 40h is added to the mode value. So:41h = show current data ,42h = freeze frame ,etc.
-      outMsg.buf[2] =  0x0F;                                                         // pid code
-      outMsg.buf[3] =  (byte)(currentStatus.IAT + CALIBRATION_TEMPERATURE_OFFSET);   // A
-      outMsg.buf[4] =  0x00;                                                         // B
-      outMsg.buf[5] =  0x00; 
-      outMsg.buf[6] =  0x00; 
-      outMsg.buf[7] =  0x00;
-  break;
+          case 15:      //PID-0x0F , Inlet air temperature , range is -40 to 215 deg C, formula == A-40 
+            outMsg.buf[0] =  0x03;                                                         // sending 3 bytes
+            outMsg.buf[1] =  0x41;                                                         // Same as query, except that 40h is added to the mode value. So:41h = show current data ,42h = freeze frame ,etc.
+            outMsg.buf[2] =  0x0F;                                                         // pid code
+            outMsg.buf[3] =  (byte)(currentStatus.IAT + CALIBRATION_TEMPERATURE_OFFSET);   // A
+            outMsg.buf[4] =  0x00;                                                         // B
+            outMsg.buf[5] =  0x00; 
+            outMsg.buf[6] =  0x00; 
+            outMsg.buf[7] =  0x00;
+         break;
 
-  case 17:  // PID-0x11 , 
+         case 17:  // PID-0x11 , 
             // TPS percentage, range is 0 to 100 percent, formula == 100/256 A 
       uint16_t temp_tpsPC;
       temp_tpsPC = currentStatus.TPS;

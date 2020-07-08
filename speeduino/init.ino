@@ -46,9 +46,9 @@ void initialiseAll()
     //enable local can interface
     //setup can interface to 500k
 
-     Can0.begin();
-     Can0.setBaudRate(500000);
-     Can0.enableFIFO();
+    // Can0.begin();
+    // Can0.setBaudRate(500000);
+    // Can0.enableFIFO();
 #endif
 
     loadConfig();

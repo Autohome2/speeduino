@@ -51,6 +51,11 @@ void setup()
 {
   initialisationComplete = false; //Tracks whether the initialiseAll() function has run completely
   initialiseAll(); 
+  #if defined(CORE_TEENSY)
+     Can0.begin();
+     Can0.setBaudRate(500000);
+     Can0.enableFIFO();
+  #endif  
 }
 
 void loop()
