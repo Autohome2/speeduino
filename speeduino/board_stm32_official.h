@@ -1,9 +1,10 @@
 #ifndef STM32OFFICIAL_H
 #define STM32OFFICIAL_H
-#if defined(CORE_STM32_OFFICIAL)
 #include <Arduino.h>
+#if defined(STM32_CORE_VERSION_MAJOR)
 #include <HardwareTimer.h>
 #include <HardwareSerial.h>
+#include "STM32RTC.h"
 
 #if defined(STM32F1)
 #include "stm32f1xx_ll_tim.h"
@@ -24,34 +25,27 @@
 #define COUNTER_TYPE uint16_t
 #define micros_safe() micros() //timer5 method is not used on anything but AVR, the micros_safe() macro is simply an alias for the normal micros()
 #define TIMER_RESOLUTION 4
-#if defined(SRAM_AS_EEPROM)
-    #define EEPROM_LIB_H "src/BackupSram/BackupSramAsEEPROM.h"
-#elif defined(FRAM_AS_EEPROM) //https://github.com/VitorBoss/FRAM
-    #define EEPROM_LIB_H <Fram.h>
-#else
-    #define EEPROM_LIB_H "src/SPIAsEEPROM/SPIAsEEPROM.h"
-#endif
 
-#ifndef LED_BUILTIN
-  #define LED_BUILTIN PA7
-#endif
-
-#if defined(FRAM_AS_EEPROM)
-  #include <Fram.h>
-  #if defined(ARDUINO_BLACK_F407VE)
-  FramClass EEPROM(PB5, PB4, PB3, PB0); /*(mosi, miso, sclk, ssel, clockspeed) 31/01/2020*/
-  #else
-  FramClass EEPROM(PB15, PB14, PB13, PB12); //Blue/Black Pills
-  #endif
-#endif
-
+#define RTC_ENABLED
 #define USE_SERIAL3
+
+//When building for Black board Serial1 is instanciated,building generic STM32F4x7 has serial2 and serial 1 must be done here
+#if SERIAL_UART_INSTANCE==2
+HardwareSerial Serial1(PA10, PA9);
+#endif
+
+extern STM32RTC& rtc;
+
 void initBoard();
 uint16_t freeRam();
+void doSystemReset();
+void jumpToBootloader();
 extern "C" char* sbrk(int incr);
 
 #if defined(ARDUINO_BLUEPILL_F103C8) || defined(ARDUINO_BLUEPILL_F103CB) \
  || defined(ARDUINO_BLACKPILL_F401CC) || defined(ARDUINO_BLACKPILL_F411CE)
+  #define pinIsReserved(pin)  ( ((pin) == PA11) || ((pin) == PA12) || ((pin) == PC14) || ((pin) == PC15) )
+
   #ifndef PB11 //Hack for F4 BlackPills
     #define PB11 PB10
   #endif
@@ -64,7 +58,70 @@ extern "C" char* sbrk(int incr);
     #define A14  PA4
     #define A15  PA5
   #endif
+#else
+  #ifdef USE_SPI_EEPROM
+    #define pinIsReserved(pin)  ( ((pin) == PA11) || ((pin) == PA12) || ((pin) == PB3) || ((pin) == PB4) || ((pin) == PB5) || ((pin) == USE_SPI_EEPROM) ) //Forbiden pins like USB
+  #else
+    #define pinIsReserved(pin)  ( ((pin) == PA11) || ((pin) == PA12) || ((pin) == PB3) || ((pin) == PB4) || ((pin) == PB5) || ((pin) == PB0) ) //Forbiden pins like USB
+  #endif
 #endif
+
+#ifndef LED_BUILTIN
+  #define LED_BUILTIN PA7
+#endif
+
+/*
+***********************************************************************************************************
+* EEPROM emulation
+*/
+#if defined(SRAM_AS_EEPROM)
+    #define EEPROM_LIB_H "src/BackupSram/BackupSramAsEEPROM.h"
+    #include EEPROM_LIB_H
+    BackupSramAsEEPROM EEPROM;
+
+#elif defined(USE_SPI_EEPROM)
+    #define EEPROM_LIB_H "src/SPIAsEEPROM/SPIAsEEPROM.h"
+    #include EEPROM_LIB_H
+    SPIClass SPI_for_flash(PB5, PB4, PB3); //SPI1_MOSI, SPI1_MISO, SPI1_SCK
+ 
+    //windbond W25Q16 SPI flash EEPROM emulation
+    EEPROM_Emulation_Config EmulatedEEPROMMconfig{255UL, 4096UL, 31, 0x00100000UL};
+    Flash_SPI_Config SPIconfig{USE_SPI_EEPROM, SPI_for_flash};
+    SPI_EEPROM_Class EEPROM(EmulatedEEPROMMconfig, SPIconfig);
+
+#elif defined(FRAM_AS_EEPROM) //https://github.com/VitorBoss/FRAM
+    #define EEPROM_LIB_H <Fram.h>
+    #include EEPROM_LIB_H
+    #if defined(STM32F407xx)
+      FramClass EEPROM(PB5, PB4, PB3, PB0); /*(mosi, miso, sclk, ssel, clockspeed) 31/01/2020*/
+    #else
+      FramClass EEPROM(PB15, PB14, PB13, PB12); //Blue/Black Pills
+    #endif
+
+#elif defined(STM32F7xx)
+  #define EEPROM_LIB_H "src/SPIAsEEPROM/SPIAsEEPROM.h"
+  #include EEPROM_LIB_H
+  #if defined(DUAL_BANK)
+    EEPROM_Emulation_Config EmulatedEEPROMMconfig{4UL, 131072UL, 2047UL, 0x08120000UL};
+  #else
+    EEPROM_Emulation_Config EmulatedEEPROMMconfig{2UL, 262144UL, 4095UL, 0x08180000UL};
+  #endif
+    InternalSTM32F7_EEPROM_Class EEPROM(EmulatedEEPROMMconfig);
+
+#elif defined(STM32F401xC)
+  #define EEPROM_LIB_H "src/SPIAsEEPROM/SPIAsEEPROM.h"
+  #include EEPROM_LIB_H
+    EEPROM_Emulation_Config EmulatedEEPROMMconfig{2UL, 131072UL, 4095UL, 0x08040000UL};
+    InternalSTM32F4_EEPROM_Class EEPROM(EmulatedEEPROMMconfig);
+
+#else //default case, internal flash as EEPROM for STM32F4
+  #define EEPROM_LIB_H "src/SPIAsEEPROM/SPIAsEEPROM.h"
+  #include EEPROM_LIB_H
+    EEPROM_Emulation_Config EmulatedEEPROMMconfig{4UL, 131072UL, 2047UL, 0x08080000UL};
+    InternalSTM32F4_EEPROM_Class EEPROM(EmulatedEEPROMMconfig);
+#endif
+
+#define RTC_LIB_H "STM32RTC.h"
 
 /*
 ***********************************************************************************************************
@@ -244,8 +301,23 @@ void ignitionSchedule8Interrupt(HardwareTimer*);
 ***********************************************************************************************************
 * CAN / Second serial
 */
-#if defined(ARDUINO_BLACK_F407VE)
+#if defined(STM32F407xx) || defined(STM32F103xB) || defined(STM32F405xx)
+#define NATIVE_CAN_AVAILABLE
 //HardwareSerial CANSerial(PD6, PD5);
+#include <src/STM32_CAN/STM32_CAN.h>
+//This activates CAN1 interface on STM32, but it's named as Can0, because that's how Teensy implementation is done
+STM32_CAN Can0 (_CAN1,DEF);
+/*
+Second CAN interface is also available if needed or it can be used also as primary CAN interface.
+for STM32F4 the default CAN1 pins are PD0 & PD1. Alternative (ALT) pins are PB8 & PB9 and ALT2 pins are PA11 and PA12:
+for STM32F4 the default CAN2 pins are PB5 & PB6. Alternative (ALT) pins are PB12 & PB13.
+for STM32F1 the default CAN1 pins are PA11 & PA12. Alternative (ALT) pins are PB8 & PB9.
+Example of using CAN2 as secondary CAN bus with alternative pins:
+STM32_CAN Can1 (_CAN2,ALT);
+*/
+
+static CAN_message_t outMsg;
+static CAN_message_t inMsg;
 #endif
 
 #endif //CORE_STM32

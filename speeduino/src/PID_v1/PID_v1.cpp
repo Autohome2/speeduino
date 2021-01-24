@@ -235,7 +235,7 @@ integerPID::integerPID(long* Input, long* Output, long* Setpoint,
  *   pid Output needs to be computed.  returns true when the output is computed,
  *   false when nothing has been done.
  **********************************************************************************/
-bool integerPID::Compute(bool pOnE)
+bool integerPID::Compute(bool pOnE, long FeedForwardTerm)
 {
    if(!inAuto) return false;
    unsigned long now = millis();
@@ -250,12 +250,13 @@ bool integerPID::Compute(bool pOnE)
          long dInput = (input - lastInput);
          long outMinResized = outMin<<PID_SHIFTS;
          long outMaxResized = outMax<<PID_SHIFTS;
+         FeedForwardTerm <<= PID_SHIFTS;
 
          if (ki != 0)
          {
             outputSum += (ki * error); //integral += error × dt
-            if(outputSum > outMaxResized) { outputSum = outMaxResized; }
-            else if(outputSum < outMinResized) { outputSum = outMinResized; }
+            if(outputSum > outMaxResized-FeedForwardTerm) { outputSum = outMaxResized-FeedForwardTerm; }
+            else if(outputSum < outMinResized-FeedForwardTerm) { outputSum = outMinResized-FeedForwardTerm; }
          }
 
          /*Compute PID Output*/
@@ -266,6 +267,7 @@ bool integerPID::Compute(bool pOnE)
             output = (kp * error);
             if (ki != 0) { output += outputSum; }
             if (kd != 0) { output -= (kd * dInput)>>2; }
+            output += FeedForwardTerm;
             output >>= PID_SHIFTS;
          }
          else
@@ -276,9 +278,9 @@ bool integerPID::Compute(bool pOnE)
 
             output = outputSum;
             if (kd != 0) { output -= (kd * dInput)>>2; }
+            output += FeedForwardTerm;
             output >>= PID_SHIFTS;
          }
-         
 
          if(output > outMax) output = outMax;
          else if(output < outMin) output = outMin;
@@ -291,7 +293,42 @@ bool integerPID::Compute(bool pOnE)
          return true;
       }
    }
-   else return false;
+   return false;
+}
+
+bool integerPID::ComputeVVT(uint32_t Sample)
+{
+   if(!inAuto) return false;
+   /*Compute all the working error variables*/
+   long pTerm, dTerm;
+   long input = *myInput;
+   long error = *mySetpoint - input;
+   long dInput = error - lastError;
+   long dTime = lastTime - Sample;
+
+   pTerm = kp * error;
+
+   if (ki != 0)
+   {
+      outputSum += (ki * error) * dTime; //integral += error × dt
+      if(outputSum > outMax*100) { outputSum = outMax*100; }
+      else if(outputSum < -outMax*100) { outputSum = -outMax*100; }
+   }
+
+   dTerm = dInput * kd * dTime;
+
+   /*Compute PID Output*/
+   long output = (pTerm + outputSum + dTerm) >> 5;
+
+   if(output > outMax) output = outMax;
+   else if(output < outMin) output = outMin;
+   *myOutput = output;
+
+   /*Remember some variables for next time*/
+   lastError = error;
+   lastTime = dTime;
+
+   return true;
 }
 
 bool integerPID::Compute2(int target, int input, bool pOnE)
@@ -363,7 +400,7 @@ bool integerPID::Compute2(int target, int input, bool pOnE)
  * it's called automatically from the constructor, but tunings can also
  * be adjusted on the fly during normal operation
  ******************************************************************************/
-void integerPID::SetTunings(byte Kp, byte Ki, byte Kd)
+void integerPID::SetTunings(byte Kp, byte Ki, byte Kd, byte realTime)
 {
    if ( dispKp == Kp && dispKi == Ki && dispKd == Kd ) return; //Only do anything if one of the values has changed
    dispKp = Kp; dispKi = Ki; dispKd = Kd;
@@ -374,13 +411,22 @@ void integerPID::SetTunings(byte Kp, byte Ki, byte Kd)
    ki = Ki * SampleTimeInSec;
    kd = Kd / SampleTimeInSec;
    */
-  long InverseSampleTimeInSec = 1000 / SampleTime;
-  //New resolution, 2 shifts to improve ki here | kp 1.563% | ki 1.563% | kd 0.195%
-  kp = (uint16_t)Kp<<2;
-  ki = (long)(Ki<<2) / InverseSampleTimeInSec;
-  kd = (long)(Kd<<2) * InverseSampleTimeInSec;
+   if(realTime == 0)
+   {
+      long InverseSampleTimeInSec = 1000 / SampleTime;
+      //New resolution, 5 shifts to improve ki here | kp 3.125% | ki 3.125% | kd 0.781%
+      kp = (uint16_t)Kp<<5;
+      ki = (long)(Ki<<5) / InverseSampleTimeInSec;
+      kd = (long)(Kd<<5) * InverseSampleTimeInSec;
+   }
+   else
+   {
+      kp = Kp;
+      ki = Ki;
+      kd = Kd;
+   }
 
-  if(controllerDirection == REVERSE)
+   if(controllerDirection == REVERSE)
    {
       kp = (0 - kp);
       ki = (0 - ki);
@@ -478,7 +524,7 @@ void integerPID::SetControllerDirection(byte Direction)
  ******************************************************************************/
 int integerPID::GetMode(){ return  inAuto ? AUTOMATIC : MANUAL;}
 int integerPID::GetDirection(){ return controllerDirection;}
-
+void integerPID::ResetIntegeral() { outputSum=0;}
 //************************************************************************************************************************
 #define limitMultiplier 100 //How much outMin and OutMax must be multiplied by to get them in the same scale as the output
 

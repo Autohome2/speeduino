@@ -24,6 +24,11 @@ Flood clear mode etc.
 long PID_O2, PID_output, PID_AFRTarget;
 PID egoPID(&PID_O2, &PID_output, &PID_AFRTarget, configPage6.egoKP, configPage6.egoKI, configPage6.egoKD, REVERSE); //This is the PID object if that algorithm is used. Needs to be global as it maintains state outside of each function call
 
+int MAP_rateOfChange;
+int TPS_rateOfChange;
+byte activateMAPDOT; //The mapDOT value seen when the MAE was activated. 
+byte activateTPSDOT; //The tpsDOT value seen when the MAE was activated.
+
 uint16_t AFRnextCycle;
 unsigned long knockStartTime;
 byte lastKnockCount;
@@ -65,8 +70,11 @@ uint16_t correctionsFuel()
   if (activeCorrections == MAX_CORRECTIONS) { sumCorrections = sumCorrections / powint(100,activeCorrections); activeCorrections = 0; } // Need to check this to ensure that sumCorrections doesn't overflow. Can occur when the number of corrections is greater than 3 (Which is 100^4) as 100^5 can overflow
 
   currentStatus.AEamount = correctionAccel();
+  if (configPage2.aeApplyMode == AE_MODE_MULTIPLIER)
+  {
   if (currentStatus.AEamount != 100) { sumCorrections = (sumCorrections * currentStatus.AEamount); activeCorrections++; }
   if (activeCorrections == MAX_CORRECTIONS) { sumCorrections = sumCorrections / powint(100,activeCorrections); activeCorrections = 0; }
+  }
 
   result = correctionFloodClear();
   if (result != 100) { sumCorrections = (sumCorrections * result); activeCorrections++; }
@@ -97,6 +105,10 @@ uint16_t correctionsFuel()
 
   currentStatus.flexCorrection = correctionFlex();
   if (currentStatus.flexCorrection != 100) { sumCorrections = (sumCorrections * currentStatus.flexCorrection); activeCorrections++; }
+  if (activeCorrections == MAX_CORRECTIONS) { sumCorrections = sumCorrections / powint(100,activeCorrections); activeCorrections = 0; }
+
+  currentStatus.fuelTempCorrection = correctionFuelTemp();
+  if (currentStatus.fuelTempCorrection != 100) { sumCorrections = (sumCorrections * currentStatus.fuelTempCorrection); activeCorrections++; }
   if (activeCorrections == MAX_CORRECTIONS) { sumCorrections = sumCorrections / powint(100,activeCorrections); activeCorrections = 0; }
 
   currentStatus.launchCorrection = correctionLaunch();
@@ -261,6 +273,29 @@ byte correctionASE()
 uint16_t correctionAccel()
 {
   int16_t accelValue = 100;
+  int16_t MAP_change = 0;
+  int8_t TPS_change = 0;
+
+  if(configPage2.aeMode == AE_MODE_MAP)
+  {
+    //Get the MAP rate change
+    MAP_change = (currentStatus.MAP - MAPlast);
+    MAP_rateOfChange = ldiv(1000000, (MAP_time - MAPlast_time)).quot * MAP_change; //This is the % per second that the TPS has moved
+    //MAP_rateOfChange = 15 * MAP_change; //This is the kpa per second that the MAP has moved
+    if(MAP_rateOfChange >= 0) { currentStatus.mapDOT = MAP_rateOfChange / 10; } //The MAE bins are divided by 10 in order to allow them to be stored in a byte. Faster as this than divu10
+    else { currentStatus.mapDOT = 0; } //Prevent overflow as mapDOT is signed
+  }
+  else if(configPage2.aeMode == AE_MODE_TPS)
+  {
+    //Get the TPS rate change
+    TPS_change = (currentStatus.TPS - TPSlast);
+    //TPS_rateOfChange = ldiv(1000000, (TPS_time - TPSlast_time)).quot * TPS_change; //This is the % per second that the TPS has moved
+    TPS_rateOfChange = TPS_READ_FREQUENCY * TPS_change; //This is the % per second that the TPS has moved
+    if(TPS_rateOfChange >= 0) { currentStatus.tpsDOT = TPS_rateOfChange / 10; } //The TAE bins are divided by 10 in order to allow them to be stored in a byte. Faster as this than divu10
+    else { currentStatus.tpsDOT = 0; } //Prevent overflow as tpsDOT is signed
+  }
+  
+
   //First, check whether the accel. enrichment is already running
   if( BIT_CHECK(currentStatus.engine, BIT_ENGINE_ACC) )
   {
@@ -278,16 +313,22 @@ uint16_t correctionAccel()
     }
     else
     {
-      //Enrichment still needs to keep running. Simply return the total TAE amount
+      //Enrichment still needs to keep running. 
+      //Simply return the total TAE amount
       accelValue = currentStatus.AEamount;
+
+      //Need to check whether the accel amount has increased from when AE was turned on
+      //If the accel amount HAS increased, we clear the current enrich phase and a new one will be started below
+      if( (configPage2.aeMode == AE_MODE_MAP) && (currentStatus.mapDOT > activateMAPDOT) ) { BIT_CLEAR(currentStatus.engine, BIT_ENGINE_ACC); }
+      else if( (configPage2.aeMode == AE_MODE_TPS) && (currentStatus.tpsDOT > activateTPSDOT) ) { BIT_CLEAR(currentStatus.engine, BIT_ENGINE_ACC); }
     }
   }
-  else
+
+  //else
+  if( !BIT_CHECK(currentStatus.engine, BIT_ENGINE_ACC) ) //Need to check this again as it may have been changed in the above section
   {
     if(configPage2.aeMode == AE_MODE_MAP)
     {
-      int16_t MAP_change = (currentStatus.MAP - MAPlast);
-
       if (MAP_change <= 2)
       {
         accelValue = 100;
@@ -296,12 +337,10 @@ uint16_t correctionAccel()
       else
       {
         //If MAE isn't currently turned on, need to check whether it needs to be turned on
-        int rateOfChange = ldiv(1000000, (MAP_time - MAPlast_time)).quot * MAP_change; //This is the % per second that the TPS has moved
-        currentStatus.mapDOT = rateOfChange / 10; //The MAE bins are divided by 10 in order to allow them to be stored in a byte. Faster as this than divu10
-
-        if (rateOfChange > configPage2.maeThresh)
+        if (MAP_rateOfChange > configPage2.maeThresh)
         {
           BIT_SET(currentStatus.engine, BIT_ENGINE_ACC); //Mark accleration enrichment as active.
+          activateMAPDOT = currentStatus.mapDOT;
           currentStatus.AEEndTime = micros_safe() + ((unsigned long)configPage2.aeTime * 10000); //Set the time in the future where the enrichment will be turned off. taeTime is stored as mS / 10, so multiply it by 100 to get it in uS
           accelValue = table2D_getValue(&maeTable, currentStatus.mapDOT);
 
@@ -347,7 +386,6 @@ uint16_t correctionAccel()
     else if(configPage2.aeMode == AE_MODE_TPS)
     {
     
-      int8_t TPS_change = (currentStatus.TPS - TPSlast);
       //Check for deceleration (Deceleration adjustment not yet supported)
       //Also check for only very small movement (Movement less than or equal to 2% is ignored). This not only means we can skip the lookup, but helps reduce false triggering around 0-2% throttle openings
       if (TPS_change <= 2)
@@ -358,12 +396,10 @@ uint16_t correctionAccel()
       else
       {
         //If TAE isn't currently turned on, need to check whether it needs to be turned on
-        int rateOfChange = ldiv(1000000, (TPS_time - TPSlast_time)).quot * TPS_change; //This is the % per second that the TPS has moved
-        currentStatus.tpsDOT = rateOfChange / 10; //The TAE bins are divided by 10 in order to allow them to be stored in a byte. Faster as this than divu10
-
-        if (rateOfChange > configPage2.taeThresh)
+        if (TPS_rateOfChange > configPage2.taeThresh)
         {
           BIT_SET(currentStatus.engine, BIT_ENGINE_ACC); //Mark accleration enrichment as active.
+          activateTPSDOT = currentStatus.tpsDOT;
           currentStatus.AEEndTime = micros_safe() + ((unsigned long)configPage2.aeTime * 10000); //Set the time in the future where the enrichment will be turned off. taeTime is stored as mS / 10, so multiply it by 100 to get it in uS
           accelValue = table2D_getValue(&taeTable, currentStatus.tpsDOT);
 
@@ -519,6 +555,20 @@ byte correctionFlex()
 }
 
 /*
+ * Fuel temperature adjustment to vary fuel based on fuel temperature reading
+*/
+byte correctionFuelTemp()
+{
+  byte fuelTempValue = 100;
+
+  if (configPage2.flexEnabled == 1)
+  {
+    fuelTempValue = table2D_getValue(&fuelTempTable, currentStatus.fuelTemp + CALIBRATION_TEMPERATURE_OFFSET);
+  }
+  return fuelTempValue;
+}
+
+/*
 Lookup the AFR target table and perform either a simple or PID adjustment based on this
 
 Simple (Best suited to narrowband sensors):
@@ -534,14 +584,18 @@ PID (Best suited to wideband sensors):
 byte correctionAFRClosedLoop()
 {
   byte AFRValue = 100;
-  if( configPage6.egoType > 0 ) //egoType of 0 means no O2 sensor
+  
+  if( (configPage6.egoType > 0) || (configPage2.incorporateAFR == true) ) //afrTarget value lookup must be done if O2 sensor is enabled, and always if incorporateAFR is enabled
   {
     currentStatus.afrTarget = currentStatus.O2; //Catch all incase the below doesn't run. This prevents the Include AFR option from doing crazy things if the AFR target conditions aren't met. This value is changed again below if all conditions are met.
 
     //Determine whether the Y axis of the AFR target table tshould be MAP (Speed-Density) or TPS (Alpha-N)
-    //Note that this should only run after the sensor warmup delay necause it is used within the Include AFR option
-    if(currentStatus.runSecs > configPage6.ego_sdelay) { currentStatus.afrTarget = get3DTableValue(&afrTable, currentStatus.fuelLoad, currentStatus.RPM); } //Perform the target lookup
-
+    //Note that this should only run after the sensor warmup delay when using Include AFR option, but on Incorporate AFR option it needs to be done at all times
+    if( (currentStatus.runSecs > configPage6.ego_sdelay) || (configPage2.incorporateAFR == true) ) { currentStatus.afrTarget = get3DTableValue(&afrTable, currentStatus.fuelLoad, currentStatus.RPM); } //Perform the target lookup
+  }
+  
+  if( configPage6.egoType > 0 ) //egoType of 0 means no O2 sensor
+  {
     AFRValue = currentStatus.egoCorrection; //Need to record this here, just to make sure the correction stays 'on' even if the nextCycle count isn't ready
     
     if(ignitionCount >= AFRnextCycle)
@@ -607,6 +661,7 @@ int8_t correctionsIgn(int8_t base_advance)
 {
   int8_t advance;
   advance = correctionFlexTiming(base_advance);
+  advance = correctionWMITiming(advance);
   advance = correctionIATretard(advance);
   advance = correctionCLTadvance(advance);
   advance = correctionIdleAdvance(advance);
@@ -647,6 +702,18 @@ int8_t correctionFlexTiming(int8_t advance)
     ignFlexValue = (int8_t) advance + currentStatus.flexIgnCorrection;
   }
   return (int8_t) ignFlexValue;
+}
+
+int8_t correctionWMITiming(int8_t advance)
+{
+  if( configPage10.wmiEnabled >= 1 && configPage10.wmiAdvEnabled == 1 && currentStatus.wmiEmpty == 0 ) //Check for wmi being enabled
+  {
+    if(currentStatus.TPS >= configPage10.wmiTPS && currentStatus.RPM >= configPage10.wmiRPM && currentStatus.MAP/2 >= configPage10.wmiMAP && currentStatus.IAT + CALIBRATION_TEMPERATURE_OFFSET >= configPage10.wmiIAT)
+    {
+      return (int16_t) advance + table2D_getValue(&wmiAdvTable, currentStatus.MAP/2) - OFFSET_IGNITION; //Negative values are achieved with offset
+    }
+  }
+  return advance;
 }
 
 int8_t correctionIATretard(int8_t advance)

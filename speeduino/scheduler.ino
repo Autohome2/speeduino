@@ -765,27 +765,27 @@ extern void beginInjectorPriming()
   if( (primingValue > 0) && (currentStatus.TPS < configPage4.floodClear) )
   {
     primingValue = primingValue * 100 * 5; //to acheive long enough priming pulses, the values in tuner studio are divided by 0.5 instead of 0.1, so multiplier of 5 is required.
-    setFuelSchedule1(100, primingValue); 
+    if ( channel1InjEnabled == true ) { setFuelSchedule1(100, primingValue); }
 #if (INJ_CHANNELS >= 2)
-    if ( configPage2.nInjectors >= 2 ) { setFuelSchedule2(100, primingValue); }
+    if ( channel2InjEnabled == true ) { setFuelSchedule2(100, primingValue); }
 #endif
 #if (INJ_CHANNELS >= 3)
-    if ( configPage2.nInjectors >= 3 ) { setFuelSchedule3(100, primingValue); }
+    if ( channel3InjEnabled == true ) { setFuelSchedule3(100, primingValue); }
 #endif
 #if (INJ_CHANNELS >= 4)
-    if ( configPage2.nInjectors >= 4 ) { setFuelSchedule4(100, primingValue); }
+    if ( channel4InjEnabled == true ) { setFuelSchedule4(100, primingValue); }
 #endif
 #if (INJ_CHANNELS >= 5)
-    if ( configPage2.nInjectors >= 5 ) { setFuelSchedule5(100, primingValue); }
+    if ( channel5InjEnabled == true ) { setFuelSchedule5(100, primingValue); }
 #endif
 #if (INJ_CHANNELS >= 6)
-    if ( configPage2.nInjectors >= 6 ) { setFuelSchedule6(100, primingValue); }
+    if ( channel6InjEnabled == true ) { setFuelSchedule6(100, primingValue); }
 #endif
 #if (INJ_CHANNELS >= 7)
-    if ( configPage2.nInjectors >= 7 ) { setFuelSchedule7(100, primingValue); }
+    if ( channel7InjEnabled == true) { setFuelSchedule7(100, primingValue); }
 #endif
 #if (INJ_CHANNELS >= 8)
-    if ( configPage2.nInjectors >= 8 ) { setFuelSchedule8(100, primingValue); }
+    if ( channel8InjEnabled == true ) { setFuelSchedule8(100, primingValue); }
 #endif
   }
 }
@@ -1210,7 +1210,8 @@ static inline void ignitionSchedule4Interrupt() //Most ARM chips can simply call
       ignitionSchedule4.StartCallback();
       ignitionSchedule4.Status = RUNNING; //Set the status to be in progress (ie The start callback has been called, but not the end callback)
       ignitionSchedule4.startTime = micros();
-      IGN4_COMPARE = (uint16_t)(IGN4_COUNTER + uS_TO_TIMER_COMPARE(ignitionSchedule4.duration)); //Doing this here prevents a potential overflow on restarts
+      if(ignitionSchedule4.endScheduleSetByDecoder == true) { IGN4_COMPARE = (uint16_t)ignitionSchedule4.endCompare; } //If the decoder has set the end compare value, assign it to the next compare
+      else { IGN4_COMPARE = (uint16_t)(IGN4_COUNTER + uS_TO_TIMER_COMPARE(ignitionSchedule4.duration)); } //If the decoder based timing isn't set, doing this here prevents a potential overflow tha
     }
     else if (ignitionSchedule4.Status == RUNNING)
     {
@@ -1250,7 +1251,8 @@ static inline void ignitionSchedule5Interrupt() //Most ARM chips can simply call
       ignitionSchedule5.StartCallback();
       ignitionSchedule5.Status = RUNNING; //Set the status to be in progress (ie The start callback has been called, but not the end callback)
       ignitionSchedule5.startTime = micros();
-      IGN5_COMPARE = (uint16_t)(IGN5_COUNTER + uS_TO_TIMER_COMPARE(ignitionSchedule5.duration)); //Doing this here prevents a potential overflow on restarts
+      if(ignitionSchedule5.endScheduleSetByDecoder == true) { IGN5_COMPARE = (uint16_t)ignitionSchedule5.endCompare; } //If the decoder has set the end compare value, assign it to the next compare
+      else { IGN5_COMPARE = (uint16_t)(IGN5_COUNTER + uS_TO_TIMER_COMPARE(ignitionSchedule5.duration)); } //If the decoder based timing isn't set, doing this here prevents a potential overflow tha
     }
     else if (ignitionSchedule5.Status == RUNNING)
     {
@@ -1290,7 +1292,8 @@ static inline void ignitionSchedule6Interrupt() //Most ARM chips can simply call
       ignitionSchedule6.StartCallback();
       ignitionSchedule6.Status = RUNNING; //Set the status to be in progress (ie The start callback has been called, but not the end callback)
       ignitionSchedule6.startTime = micros();
-      IGN6_COMPARE = (uint16_t)(IGN6_COUNTER + uS_TO_TIMER_COMPARE(ignitionSchedule6.duration)); //Doing this here prevents a potential overflow on restarts
+      if(ignitionSchedule6.endScheduleSetByDecoder == true) { IGN6_COMPARE = (uint16_t)ignitionSchedule6.endCompare; } //If the decoder has set the end compare value, assign it to the next compare
+      else { IGN6_COMPARE = (uint16_t)(IGN6_COUNTER + uS_TO_TIMER_COMPARE(ignitionSchedule6.duration)); } //If the decoder based timing isn't set, doing this here prevents a potential overflow tha
     }
     else if (ignitionSchedule6.Status == RUNNING)
     {
@@ -1330,7 +1333,8 @@ static inline void ignitionSchedule7Interrupt() //Most ARM chips can simply call
       ignitionSchedule7.StartCallback();
       ignitionSchedule7.Status = RUNNING; //Set the status to be in progress (ie The start callback has been called, but not the end callback)
       ignitionSchedule7.startTime = micros();
-      IGN7_COMPARE = (uint16_t)(IGN7_COUNTER + uS_TO_TIMER_COMPARE(ignitionSchedule7.duration)); //Doing this here prevents a potential overflow on restarts
+      if(ignitionSchedule7.endScheduleSetByDecoder == true) { IGN7_COMPARE = (uint16_t)ignitionSchedule7.endCompare; } //If the decoder has set the end compare value, assign it to the next compare
+      else { IGN7_COMPARE = (uint16_t)(IGN7_COUNTER + uS_TO_TIMER_COMPARE(ignitionSchedule7.duration)); } //If the decoder based timing isn't set, doing this here prevents a potential overflow tha
     }
     else if (ignitionSchedule7.Status == RUNNING)
     {
@@ -1370,7 +1374,8 @@ static inline void ignitionSchedule8Interrupt() //Most ARM chips can simply call
       ignitionSchedule8.StartCallback();
       ignitionSchedule8.Status = RUNNING; //Set the status to be in progress (ie The start callback has been called, but not the end callback)
       ignitionSchedule8.startTime = micros();
-      IGN8_COMPARE = (uint16_t)(IGN8_COUNTER + uS_TO_TIMER_COMPARE(ignitionSchedule8.duration)); //Doing this here prevents a potential overflow on restarts
+      if(ignitionSchedule8.endScheduleSetByDecoder == true) { IGN8_COMPARE = (uint16_t)ignitionSchedule8.endCompare; } //If the decoder has set the end compare value, assign it to the next compare
+      else { IGN8_COMPARE = (uint16_t)(IGN8_COUNTER + uS_TO_TIMER_COMPARE(ignitionSchedule8.duration)); } //If the decoder based timing isn't set, doing this here prevents a potential overflow tha
     }
     else if (ignitionSchedule8.Status == RUNNING)
     {
@@ -1396,67 +1401,4 @@ static inline void ignitionSchedule8Interrupt() //Most ARM chips can simply call
       IGN8_TIMER_DISABLE();
     }
   }
-#endif
-
-
-#if defined(CORE_TEENSY35)
-void ftm0_isr(void)
-{
-  //Use separate variables for each test to ensure conversion to bool
-  bool interrupt1 = (FTM0_C0SC & FTM_CSC_CHF);
-  bool interrupt2 = (FTM0_C1SC & FTM_CSC_CHF);
-  bool interrupt3 = (FTM0_C2SC & FTM_CSC_CHF);
-  bool interrupt4 = (FTM0_C3SC & FTM_CSC_CHF);
-  bool interrupt5 = (FTM0_C4SC & FTM_CSC_CHF);
-  bool interrupt6 = (FTM0_C5SC & FTM_CSC_CHF);
-  bool interrupt7 = (FTM0_C6SC & FTM_CSC_CHF);
-  bool interrupt8 = (FTM0_C7SC & FTM_CSC_CHF);
-
-  if(interrupt1) { FTM0_C0SC &= ~FTM_CSC_CHF; fuelSchedule1Interrupt(); }
-  else if(interrupt2) { FTM0_C1SC &= ~FTM_CSC_CHF; fuelSchedule2Interrupt(); }
-  else if(interrupt3) { FTM0_C2SC &= ~FTM_CSC_CHF; fuelSchedule3Interrupt(); }
-  else if(interrupt4) { FTM0_C3SC &= ~FTM_CSC_CHF; fuelSchedule4Interrupt(); }
-  else if(interrupt5) { FTM0_C4SC &= ~FTM_CSC_CHF; ignitionSchedule1Interrupt(); }
-  else if(interrupt6) { FTM0_C5SC &= ~FTM_CSC_CHF; ignitionSchedule2Interrupt(); }
-  else if(interrupt7) { FTM0_C6SC &= ~FTM_CSC_CHF; ignitionSchedule3Interrupt(); }
-  else if(interrupt8) { FTM0_C7SC &= ~FTM_CSC_CHF; ignitionSchedule4Interrupt(); }
-
-}
-void ftm3_isr(void)
-{
-
-#if (INJ_CHANNELS >= 5)
-  bool interrupt1 = (FTM3_C0SC & FTM_CSC_CHF);
-  if(interrupt1) { FTM3_C0SC &= ~FTM_CSC_CHF; fuelSchedule5Interrupt(); }
-#endif
-#if (INJ_CHANNELS >= 6)
-  bool interrupt2 = (FTM3_C1SC & FTM_CSC_CHF);
-  if(interrupt2) { FTM3_C1SC &= ~FTM_CSC_CHF; fuelSchedule6Interrupt(); }
-#endif
-#if (INJ_CHANNELS >= 7)
-  bool interrupt3 = (FTM3_C2SC & FTM_CSC_CHF);
-  if(interrupt3) { FTM3_C2SC &= ~FTM_CSC_CHF; fuelSchedule7Interrupt(); }
-#endif
-#if (INJ_CHANNELS >= 8)
-  bool interrupt4 = (FTM3_C3SC & FTM_CSC_CHF);
-  if(interrupt4) { FTM3_C3SC &= ~FTM_CSC_CHF; fuelSchedule8Interrupt(); }
-#endif
-#if (IGN_CHANNELS >= 5)
-  bool interrupt5 = (FTM3_C4SC & FTM_CSC_CHF);
-  if(interrupt5) { FTM3_C4SC &= ~FTM_CSC_CHF; ignitionSchedule5Interrupt(); }
-#endif
-#if (IGN_CHANNELS >= 6)
-  bool interrupt6 = (FTM3_C5SC & FTM_CSC_CHF);
-  if(interrupt6) { FTM3_C5SC &= ~FTM_CSC_CHF; ignitionSchedule6Interrupt(); }
-#endif
-#if (IGN_CHANNELS >= 7)
-  bool interrupt7 = (FTM3_C6SC & FTM_CSC_CHF);
-  if(interrupt7) { FTM3_C6SC &= ~FTM_CSC_CHF; ignitionSchedule7Interrupt(); }
-#endif
-#if (IGN_CHANNELS >= 8)
-  bool interrupt8 = (FTM3_C7SC & FTM_CSC_CHF);
-  if(interrupt8) { FTM3_C7SC &= ~FTM_CSC_CHF; ignitionSchedule8Interrupt(); }
-#endif
-
-}
 #endif

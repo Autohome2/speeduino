@@ -3,15 +3,17 @@
 const char TSfirmwareVersion[] PROGMEM = "Speeduino";
 
 const byte data_structure_version = 2; //This identifies the data structure when reading / writing.
-const uint16_t npage_size[NUM_PAGES] = {0,128,288,288,128,288,128,240,192,192,192,288}; /**< This array stores the size (in bytes) of each configuration page */
+const uint16_t npage_size[NUM_PAGES] = {0,128,288,288,128,288,128,240,192,192,192,288,192,128,288}; /**< This array stores the size (in bytes) of each configuration page */
 
 struct table3D fuelTable; //16x16 fuel map
 struct table3D fuelTable2; //16x16 fuel map
 struct table3D ignitionTable; //16x16 ignition map
+struct table3D ignitionTable2; //16x16 ignition map
 struct table3D afrTable; //16x16 afr target map
 struct table3D stagingTable; //8x8 fuel staging table
 struct table3D boostTable; //8x8 boost map
 struct table3D vvtTable; //8x8 vvt map
+struct table3D wmiTable; //8x8 wmi map
 struct table3D trim1Table; //6x6 Fuel trim 1 map
 struct table3D trim2Table; //6x6 Fuel trim 2 map
 struct table3D trim3Table; //6x6 Fuel trim 3 map
@@ -36,9 +38,11 @@ struct table2D rotarySplitTable; //8 bin ignition split curve for rotary leading
 struct table2D flexFuelTable;  //6 bin flex fuel correction table for fuel adjustments (2D)
 struct table2D flexAdvTable;   //6 bin flex fuel correction table for timing advance (2D)
 struct table2D flexBoostTable; //6 bin flex fuel correction table for boost adjustments (2D)
+struct table2D fuelTempTable;  //6 bin flex fuel correction table for fuel adjustments (2D)
 struct table2D knockWindowStartTable;
 struct table2D knockWindowDurationTable;
 struct table2D oilPressureProtectTable;
+struct table2D wmiAdvTable; //6 bin wmi correction table for timing advance (2D)
 
 //These are for the direct port manipulation of the injectors, coils and aux outputs
 volatile PORT_TYPE *inj1_pin_port;
@@ -80,6 +84,9 @@ volatile PINMASK_TYPE tach_pin_mask;
 volatile PORT_TYPE *pump_pin_port;
 volatile PINMASK_TYPE pump_pin_mask;
 
+volatile PORT_TYPE *flex_pin_port;
+volatile PINMASK_TYPE flex_pin_mask;
+
 volatile PORT_TYPE *triggerPri_pin_port;
 volatile PINMASK_TYPE triggerPri_pin_mask;
 volatile PORT_TYPE *triggerSec_pin_port;
@@ -105,6 +112,8 @@ int ignition7EndAngle = 0;
 int ignition8EndAngle = 0;
 
 //These are variables used across multiple files
+byte fullStatus[LOG_ENTRY_SIZE];
+byte fsIntIndex[31] = {4, 14, 25, 27, 32, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63, 65, 67, 69, 71, 75, 77, 79, 81, 85, 87, 89, 96, 101}; //int indexes in fullStatus array
 bool initialisationComplete = false; //Tracks whether the setup() function has run completely
 byte fpPrimeTime = 0; //The time (in seconds, based on currentStatus.secl) that the fuel pump started priming
 volatile uint16_t mainLoopCount;
@@ -150,6 +159,7 @@ byte pinInjector5; //Output pin injector 5
 byte pinInjector6; //Output pin injector 6
 byte pinInjector7; //Output pin injector 7
 byte pinInjector8; //Output pin injector 8
+byte injectorOutputControl = OUTPUT_CONTROL_DIRECT; //Specifies whether the injectors are controlled directly (Via an IO pin) or using something like the MC33810. 0=Direct
 byte pinCoil1; //Pin for coil 1
 byte pinCoil2; //Pin for coil 2
 byte pinCoil3; //Pin for coil 3
@@ -158,6 +168,7 @@ byte pinCoil5; //Pin for coil 5
 byte pinCoil6; //Pin for coil 6
 byte pinCoil7; //Pin for coil 7
 byte pinCoil8; //Pin for coil 8
+byte ignitionOutputControl = OUTPUT_CONTROL_DIRECT; //Specifies whether the coils are controlled directly (Via an IO pin) or using something like the MC33810. 0=Direct
 byte pinTrigger; //The CAS pin
 byte pinTrigger2; //The Cam Sensor pin
 byte pinTrigger3;	//the 2nd cam sensor pin
@@ -176,8 +187,10 @@ byte pinFuelPump; //Fuel pump on/off
 byte pinIdle1; //Single wire idle control
 byte pinIdle2; //2 wire idle control (Not currently used)
 byte pinIdleUp; //Input for triggering Idle Up
+byte pinIdleUpOutput; //Output that follows (normal or inverted) the idle up pin
 byte pinCTPS; //Input for triggering closed throttle state
 byte pinFuel2Input; //Input for switching to the 2nd fuel table
+byte pinSpark2Input; //Input for switching to the 2nd ignition table
 byte pinSpareTemp1; // Future use only
 byte pinSpareTemp2; // Future use only
 byte pinSpareOut1; //Generic output
@@ -208,11 +221,11 @@ byte pinBaro; //Pin that an al barometric pressure sensor is attached to (If use
 byte pinResetControl; // Output pin used control resetting the Arduino
 byte pinFuelPressure;
 byte pinOilPressure;
-#ifdef USE_MC33810
-  //If the MC33810 IC\s are in use, these are the chip select pins
-  byte pinMC33810_1_CS;
-  byte pinMC33810_2_CS;
-#endif
+byte pinWMIEmpty; // Water tank empty sensor
+byte pinWMIIndicator; // No water indicator bulb
+byte pinWMIEnabled; // ON-OFF ouput to relay/pump/solenoid 
+byte pinMC33810_1_CS;
+byte pinMC33810_2_CS;
 #ifdef USE_SPI_EEPROM
   byte pinSPIFlash_CS;
 #endif
@@ -223,14 +236,18 @@ struct config4 configPage4;
 struct config6 configPage6;
 struct config9 configPage9;
 struct config10 configPage10;
+struct config13 configPage13;
 
 //byte cltCalibrationTable[CALIBRATION_TABLE_SIZE]; /**< An array containing the coolant sensor calibration values */
 //byte iatCalibrationTable[CALIBRATION_TABLE_SIZE]; /**< An array containing the inlet air temperature sensor calibration values */
-byte o2CalibrationTable[CALIBRATION_TABLE_SIZE]; /**< An array containing the O2 sensor calibration values */
+//byte o2CalibrationTable[CALIBRATION_TABLE_SIZE]; /**< An array containing the O2 sensor calibration values */
 
 uint16_t cltCalibration_bins[32];
 uint16_t cltCalibration_values[32];
-struct table2D cltCalibrationTable_new;
+struct table2D cltCalibrationTable;
 uint16_t iatCalibration_bins[32];
 uint16_t iatCalibration_values[32];
-struct table2D iatCalibrationTable_new;
+struct table2D iatCalibrationTable;
+uint16_t o2Calibration_bins[32];
+uint8_t o2Calibration_values[32];
+struct table2D o2CalibrationTable;

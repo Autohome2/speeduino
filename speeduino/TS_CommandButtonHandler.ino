@@ -6,7 +6,7 @@
 
 #include "TS_CommandButtonHandler.h"
 #include "globals.h"
-#include "utils.h"
+#include "utilities.h"
 #include "scheduledIO.h"
 #include "sensors.h"
 #include "storage.h"
@@ -18,11 +18,9 @@
  * @brief 
  * 
  * @param buttonCommand The command number of the button that was clicked. See TS_CommendButtonHandler.h for a list of button IDs
- * @return uint16_t If the button command remains incomplete (IE When it must wait for a certain action to complete) the return value is eqaul to the button ID. Otherwise this function returns 0
  */
-uint16_t TS_CommandButtonsHandler(int buttonCommand)
+void TS_CommandButtonsHandler(int buttonCommand)
 {
-  uint16_t returnValue = 0;
   switch (buttonCommand)
   {
     case TS_CMD_TEST_DSBL: // cmd is stop
@@ -176,7 +174,7 @@ uint16_t TS_CommandButtonsHandler(int buttonCommand)
       break;
 
     case TS_CMD_IGN1_ON: // cmd group is for spark1 on actions
-      if( BIT_CHECK(currentStatus.testOutputs, 1) ) { beginCoil1Charge(); }
+      if( BIT_CHECK(currentStatus.testOutputs, 1) ){ beginCoil1Charge(); }
       break;
 
     case TS_CMD_IGN1_OFF: // cmd group is for spark1 off actions
@@ -185,7 +183,7 @@ uint16_t TS_CommandButtonsHandler(int buttonCommand)
 
     case TS_CMD_IGN1_50PC: // cmd group is for spark1 50%dc actions
       if( BIT_CHECK(currentStatus.testOutputs, 1) ) { BIT_TOGGLE(HWTest_IGN_50pc, IGN1_CMD_BIT); }
-      if(!BIT_CHECK(HWTest_IGN_50pc, IGN1_CMD_BIT)) { coil1Low(); } //Ensure this output is turned off (Otherwise the output may stay on permanently)
+      if(!BIT_CHECK(HWTest_IGN_50pc, IGN1_CMD_BIT)) { endCoil1Charge(); } //Ensure this output is turned off (Otherwise the output may stay on permanently)
       break;
 
     case TS_CMD_IGN2_ON: // cmd group is for spark2 on actions
@@ -198,7 +196,7 @@ uint16_t TS_CommandButtonsHandler(int buttonCommand)
 
     case TS_CMD_IGN2_50PC: // cmd group is for spark2 50%dc actions
       if( BIT_CHECK(currentStatus.testOutputs, 1) ) { BIT_TOGGLE(HWTest_IGN_50pc, IGN2_CMD_BIT); }
-      if(!BIT_CHECK(HWTest_IGN_50pc, IGN2_CMD_BIT)) { coil2Low(); } //Ensure this output is turned off (Otherwise the output may stay on permanently)
+      if(!BIT_CHECK(HWTest_IGN_50pc, IGN2_CMD_BIT)) { endCoil2Charge(); } //Ensure this output is turned off (Otherwise the output may stay on permanently)
       break;
 
     case TS_CMD_IGN3_ON: // cmd group is for spark3 on actions
@@ -211,7 +209,7 @@ uint16_t TS_CommandButtonsHandler(int buttonCommand)
 
     case TS_CMD_IGN3_50PC: // cmd group is for spark3 50%dc actions
       if( BIT_CHECK(currentStatus.testOutputs, 1) ) { BIT_TOGGLE(HWTest_IGN_50pc, IGN3_CMD_BIT); }
-      if(!BIT_CHECK(HWTest_IGN_50pc, IGN3_CMD_BIT)) { coil3Low(); } //Ensure this output is turned off (Otherwise the output may stay on permanently)
+      if(!BIT_CHECK(HWTest_IGN_50pc, IGN3_CMD_BIT)) { endCoil3Charge(); } //Ensure this output is turned off (Otherwise the output may stay on permanently)
       break;
 
     case TS_CMD_IGN4_ON: // cmd group is for spark4 on actions
@@ -224,7 +222,7 @@ uint16_t TS_CommandButtonsHandler(int buttonCommand)
 
     case TS_CMD_IGN4_50PC: // cmd group is for spark4 50%dc actions
       if( BIT_CHECK(currentStatus.testOutputs, 1) ) { BIT_TOGGLE(HWTest_IGN_50pc, IGN4_CMD_BIT); }
-      if(!BIT_CHECK(HWTest_IGN_50pc, IGN4_CMD_BIT)) { coil4Low(); } //Ensure this output is turned off (Otherwise the output may stay on permanently)
+      if(!BIT_CHECK(HWTest_IGN_50pc, IGN4_CMD_BIT)) { endCoil4Charge(); } //Ensure this output is turned off (Otherwise the output may stay on permanently)
       break;
 
     case TS_CMD_IGN5_ON: // cmd group is for spark5 on actions
@@ -237,7 +235,7 @@ uint16_t TS_CommandButtonsHandler(int buttonCommand)
 
     case TS_CMD_IGN5_50PC: // cmd group is for spark4 50%dc actions
       if( BIT_CHECK(currentStatus.testOutputs, 1) ) { BIT_TOGGLE(HWTest_IGN_50pc, IGN5_CMD_BIT); }
-      if(!BIT_CHECK(HWTest_IGN_50pc, IGN5_CMD_BIT)) { coil5Low(); } //Ensure this output is turned off (Otherwise the output may stay on permanently)
+      if(!BIT_CHECK(HWTest_IGN_50pc, IGN5_CMD_BIT)) { endCoil5Charge(); } //Ensure this output is turned off (Otherwise the output may stay on permanently)
       break;
 
     case TS_CMD_IGN6_ON: // cmd group is for spark6 on actions
@@ -250,7 +248,7 @@ uint16_t TS_CommandButtonsHandler(int buttonCommand)
 
     case TS_CMD_IGN6_50PC: // cmd group is for spark6 50%dc actions
       if( BIT_CHECK(currentStatus.testOutputs, 1) ) { BIT_TOGGLE(HWTest_IGN_50pc, IGN6_CMD_BIT); }
-      if(!BIT_CHECK(HWTest_IGN_50pc, IGN6_CMD_BIT)) { coil6Low(); } //Ensure this output is turned off (Otherwise the output may stay on permanently)
+      if(!BIT_CHECK(HWTest_IGN_50pc, IGN6_CMD_BIT)) { endCoil6Charge(); } //Ensure this output is turned off (Otherwise the output may stay on permanently)
       break;
 
     case TS_CMD_IGN7_ON: // cmd group is for spark7 on actions
@@ -263,7 +261,7 @@ uint16_t TS_CommandButtonsHandler(int buttonCommand)
 
     case TS_CMD_IGN7_50PC: // cmd group is for spark7 50%dc actions
       if( BIT_CHECK(currentStatus.testOutputs, 1) ) { BIT_TOGGLE(HWTest_IGN_50pc, IGN7_CMD_BIT); }
-      if(!BIT_CHECK(HWTest_IGN_50pc, IGN7_CMD_BIT)) { coil7Low(); } //Ensure this output is turned off (Otherwise the output may stay on permanently)
+      if(!BIT_CHECK(HWTest_IGN_50pc, IGN7_CMD_BIT)) { endCoil7Charge(); } //Ensure this output is turned off (Otherwise the output may stay on permanently)
       break;
 
     case TS_CMD_IGN8_ON: // cmd group is for spark8 on actions
@@ -276,7 +274,7 @@ uint16_t TS_CommandButtonsHandler(int buttonCommand)
 
     case TS_CMD_IGN8_50PC: // cmd group is for spark8 50%dc actions
       if( BIT_CHECK(currentStatus.testOutputs, 1) ) { BIT_TOGGLE(HWTest_IGN_50pc, IGN8_CMD_BIT); }
-      if(!BIT_CHECK(HWTest_IGN_50pc, IGN8_CMD_BIT)) { coil8Low(); } //Ensure this output is turned off (Otherwise the output may stay on permanently)
+      if(!BIT_CHECK(HWTest_IGN_50pc, IGN8_CMD_BIT)) { endCoil8Charge(); } //Ensure this output is turned off (Otherwise the output may stay on permanently)
       break;
 
     //VSS Calibration routines
@@ -348,9 +346,16 @@ uint16_t TS_CommandButtonsHandler(int buttonCommand)
       }
       break;
 
+    //STM32 Commands
+    case TS_CMD_STM32_REBOOT: //
+      doSystemReset();
+      break;
+
+    case TS_CMD_STM32_BOOTLOADER: //
+      jumpToBootloader();
+      break;
+
     default:
       break;
   }
-
-  return returnValue;
 }
