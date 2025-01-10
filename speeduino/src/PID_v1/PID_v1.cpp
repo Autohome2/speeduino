@@ -54,21 +54,21 @@ bool PID::Compute()
       /*Compute all the working error variables*/
 	  long input = *myInput;
       long error = *mySetpoint - input;
-      ITerm += (ki * error)/100;
+      ITerm += (ki * error);
       if(ITerm > outMax) ITerm= outMax;
-      else if(ITerm < outMin) ITerm= outMin;
+      else if(ITerm < outMin) ITerm = outMin;
       long dInput = (input - lastInput);
 
       /*Compute PID Output*/
-      long output = (kp * error)/100 + ITerm- (kd * dInput)/100;
+      long output = (kp * error) + ITerm- (kd * dInput);
 
 	  if(output > outMax) { output = outMax; }
       else if(output < outMin) { output = outMin; }
-	  *myOutput = output;
+	  *myOutput = output/1000;
 
       /*Remember some variables for next time*/
       lastInput = input;
-      //lastTime = now;
+      lastTime = now;
 	  return true;
    }
    //else return false;
@@ -90,10 +90,10 @@ void PID::SetTunings(byte Kp, byte Ki, byte Kd)
    ki = Ki * SampleTimeInSec;
    kd = Kd / SampleTimeInSec;
    */
-  long InverseSampleTimeInSec = 100000 / SampleTime;
+  //long InverseSampleTimeInSec = 100;
   kp = Kp;
-  ki = (Ki * 100) / InverseSampleTimeInSec;
-  kd = (Kd * InverseSampleTimeInSec) / 100;
+  ki = Ki;
+  kd = Kd * 10;
 
   if(controllerDirection ==REVERSE)
    {
@@ -129,8 +129,8 @@ void PID::SetSampleTime(int NewSampleTime)
 void PID::SetOutputLimits(long Min, long Max)
 {
    if(Min >= Max) return;
-   outMin = Min;
-   outMax = Max;
+   outMin = Min*1000;
+   outMax = Max*1000;
 
    if(inAuto)
    {
@@ -186,7 +186,7 @@ void PID::SetControllerDirection(byte Direction)
    controllerDirection = Direction;
 }
 
-/* Status Funcions*************************************************************
+/* Status Functions*************************************************************
  * Just because you set the Kp=-1 doesn't mean it actually happened.  these
  * functions query the internal state of the PID.  they're here for display
  * purposes.  this are the functions the PID Front-end uses for example
@@ -210,7 +210,7 @@ int PID::GetDirection(){ return controllerDirection;}
  * @return byte The current target advance value in degrees
  */
 integerPID::integerPID(long* Input, long* Output, long* Setpoint,
-        byte Kp, byte Ki, byte Kd, byte ControllerDirection)
+        int16_t Kp, int16_t Ki, int16_t Kd, byte ControllerDirection)
 {
 
    myOutput = Output;
@@ -220,12 +220,12 @@ integerPID::integerPID(long* Input, long* Output, long* Setpoint,
 
 	integerPID::SetOutputLimits(0, 255);   //default output limit corresponds to the arduino pwm limits
 
-    SampleTime = 250;							//default Controller Sample Time is 0.25 seconds. This is the 4Hz control time for Idle and VVT
+   SampleTime = 250;							//default Controller Sample Time is 0.25 seconds. This is the 4Hz control time for Idle and VVT
 
-    integerPID::SetControllerDirection(ControllerDirection);
-    integerPID::SetTunings(Kp, Ki, Kd);
+   integerPID::SetControllerDirection(ControllerDirection);
+   integerPID::SetTunings(Kp, Ki, Kd);
 
-    lastTime = millis()-SampleTime;
+   lastTime = millis()-SampleTime;
 }
 
 
@@ -248,15 +248,13 @@ bool integerPID::Compute(bool pOnE, long FeedForwardTerm)
       {
          long error = *mySetpoint - input;
          long dInput = (input - lastInput);
-         long outMinResized = outMin<<PID_SHIFTS;
-         long outMaxResized = outMax<<PID_SHIFTS;
          FeedForwardTerm <<= PID_SHIFTS;
 
          if (ki != 0)
          {
             outputSum += (ki * error); //integral += error × dt
-            if(outputSum > outMaxResized-FeedForwardTerm) { outputSum = outMaxResized-FeedForwardTerm; }
-            else if(outputSum < outMinResized-FeedForwardTerm) { outputSum = outMinResized-FeedForwardTerm; }
+            if(outputSum > outMax-FeedForwardTerm) { outputSum = outMax-FeedForwardTerm; }
+            else if(outputSum < outMin-FeedForwardTerm) { outputSum = outMin-FeedForwardTerm; }
          }
 
          /*Compute PID Output*/
@@ -266,25 +264,22 @@ bool integerPID::Compute(bool pOnE, long FeedForwardTerm)
          {
             output = (kp * error);
             if (ki != 0) { output += outputSum; }
-            if (kd != 0) { output -= (kd * dInput)>>2; }
-            output += FeedForwardTerm;
-            output >>= PID_SHIFTS;
          }
          else
          {
             outputSum -= (kp * dInput);
-            if(outputSum > outMaxResized) { outputSum = outMaxResized; }
-            else if(outputSum < outMinResized) { outputSum = outMinResized; }
+            if(outputSum > outMax) { outputSum = outMax; }
+            else if(outputSum < outMin) { outputSum = outMin; }
 
             output = outputSum;
-            if (kd != 0) { output -= (kd * dInput)>>2; }
-            output += FeedForwardTerm;
-            output >>= PID_SHIFTS;
          }
+         if (kd != 0) { output -= (kd * dInput)>>2; }
+         output += FeedForwardTerm;
 
          if(output > outMax) output = outMax;
          else if(output < outMin) output = outMin;
-         *myOutput = output;
+
+         *myOutput = output >> PID_SHIFTS;
 
          /*Remember some variables for next time*/
          lastInput = input;
@@ -400,7 +395,7 @@ bool integerPID::Compute2(int target, int input, bool pOnE)
  * it's called automatically from the constructor, but tunings can also
  * be adjusted on the fly during normal operation
  ******************************************************************************/
-void integerPID::SetTunings(byte Kp, byte Ki, byte Kd, byte realTime)
+void integerPID::SetTunings(int16_t Kp, int16_t Ki, int16_t Kd, byte realTime)
 {
    if ( dispKp == Kp && dispKi == Ki && dispKd == Kd ) return; //Only do anything if one of the values has changed
    dispKp = Kp; dispKi = Ki; dispKd = Kd;
@@ -414,10 +409,10 @@ void integerPID::SetTunings(byte Kp, byte Ki, byte Kd, byte realTime)
    if(realTime == 0)
    {
       long InverseSampleTimeInSec = 1000 / SampleTime;
-      //New resolution, 5 shifts to improve ki here | kp 3.125% | ki 3.125% | kd 0.781%
-      kp = (uint16_t)Kp<<5;
-      ki = (long)(Ki<<5) / InverseSampleTimeInSec;
-      kd = (long)(Kd<<5) * InverseSampleTimeInSec;
+      //New resolution, 32x to improve ki here | kp 3.125% | ki 3.125% | kd 0.781%
+      kp = Kp * 32;
+      ki = (long)(Ki * 32) / InverseSampleTimeInSec;
+      kd = (long)(Kd * 32) * InverseSampleTimeInSec;
    }
    else
    {
@@ -459,16 +454,16 @@ void integerPID::SetSampleTime(uint16_t NewSampleTime)
 void integerPID::SetOutputLimits(long Min, long Max)
 {
    if(Min >= Max) return;
-   outMin = Min;
-   outMax = Max;
+   outMin = Min << PID_SHIFTS;
+   outMax = Max << PID_SHIFTS;
 
    if(inAuto)
    {
-	   if(*myOutput > outMax) *myOutput = outMax;
-	   else if(*myOutput < outMin) *myOutput = outMin;
+      if(*myOutput > Max) *myOutput = Max;
+	   else if(*myOutput < Min) *myOutput = Min;
 
-	   if((outputSum>>PID_SHIFTS) > outMax) { outputSum = outMax<<PID_SHIFTS; }
-	   else if((outputSum>>PID_SHIFTS) < outMin) { outputSum = outMin<<PID_SHIFTS; }
+	   if(outputSum > outMax) { outputSum = outMax; }
+	   else if(outputSum < outMin) { outputSum = outMin; }
    }
 }
 
@@ -496,8 +491,8 @@ void integerPID::Initialize()
    outputSum = *myOutput<<PID_SHIFTS;
    lastInput = *myInput;
    lastMinusOneInput = *myInput;
-   if((outputSum>>PID_SHIFTS) > outMax) { outputSum = outMax<<PID_SHIFTS; }
-   else if((outputSum>>PID_SHIFTS) < outMin) { outputSum = outMin<<PID_SHIFTS; }
+   if(outputSum > outMax) { outputSum = outMax; }
+   else if(outputSum < outMin) { outputSum = outMin; }
 }
 
 /* SetControllerDirection(...)*************************************************
@@ -517,7 +512,7 @@ void integerPID::SetControllerDirection(byte Direction)
    controllerDirection = Direction;
 }
 
-/* Status Funcions*************************************************************
+/* Status Functions*************************************************************
  * Just because you set the Kp=-1 doesn't mean it actually happened.  these
  * functions query the internal state of the PID.  they're here for display
  * purposes.  this are the functions the PID Front-end uses for example
@@ -559,6 +554,18 @@ integerPID_ideal::integerPID_ideal(long* Input, uint16_t* Output, uint16_t* Setp
  **********************************************************************************/
 bool integerPID_ideal::Compute()
 {
+   //This is the original PID with 50% Base target DC
+   return Compute(50*limitMultiplier);
+}
+
+/* Compute() **********************************************************************
+ *     This, as they say, is where the magic happens.  this function should be called
+ *   every time "void loop()" executes.  the function will decide for itself whether a new
+ *   pid Output needs to be computed.  returns true when the output is computed,
+ *   false when nothing has been done.
+ **********************************************************************************/
+bool integerPID_ideal::Compute(uint16_t FeedForward)
+{
    unsigned long now = millis();
    //SampleTime = (now - lastTime);
    unsigned long timeChange = (now - lastTime);
@@ -572,19 +579,19 @@ bool integerPID_ideal::Compute()
 
       ITerm += error;
 
-      uint16_t bias = 50; //Base target DC%
+      // uint16_t bias = 50; //Base target DC%
       long output = 0;
 
       if(ki != 0)
       {
-        output = ((outMax - bias) * limitMultiplier * 100) / (long)ki;
+        output = ((outMax * limitMultiplier * 100) - FeedForward) / (long)ki;
         if (output < 0) { output = 0; }
       }
       if (ITerm > output) { ITerm = output; }
 
       if(ki != 0)
       {
-        output = ((bias - outMin) * limitMultiplier * 100) / (long)ki;
+        output = (FeedForward - (-outMin * limitMultiplier * 100)) / (long)ki;
         if (output < 0) { output = 0; }
       }
       else { output = 0; }
@@ -592,7 +599,7 @@ bool integerPID_ideal::Compute()
 
       /*Compute PID Output*/
       output = (kp * error) + (ki * ITerm) + (kd * (error - lastError));
-      output = (bias * limitMultiplier) + (output / 10); //output is % multipled by 1000. To get % with 2 decimal places, divide it by 10. Likewise, bias is % in whole numbers. Multiply it by 100 to get it with 2 places.
+      output = FeedForward + (output / 10); //output is % multiplied by 1000. To get % with 2 decimal places, divide it by 10. Likewise, bias is % in whole numbers. Multiply it by 100 to get it with 2 places.
 
       //if(output > (outMax * limitMultiplier)) { output  = (outMax * limitMultiplier);  }
       //if(output < (outMin * limitMultiplier)) { output  = (outMin * limitMultiplier);  }
@@ -687,7 +694,7 @@ void integerPID_ideal::SetControllerDirection(byte Direction)
    controllerDirection = Direction;
 }
 
-/* Status Funcions*************************************************************
+/* Status Functions*************************************************************
  * Just because you set the Kp=-1 doesn't mean it actually happened.  these
  * functions query the internal state of the PID.  they're here for display
  * purposes.  this are the functions the PID Front-end uses for example

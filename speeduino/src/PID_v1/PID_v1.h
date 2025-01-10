@@ -45,7 +45,7 @@ class PID
 
 
   //Display functions ****************************************************************
-	int16_t GetKp();						  // These functions query the pid for interal values.
+	int16_t GetKp();						  // These functions query the pid for internal values.
 	int16_t GetKi();						  //  they were created mainly for the pid front-end,
 	int16_t GetKd();						  // where it's important to know what is actually
 	int GetMode();						  //  inside the PID.
@@ -92,7 +92,7 @@ class integerPID
 
   //commonly used functions **************************************************************************
     integerPID(long*, long*, long*,        // * constructor.  links the PID to the Input, Output, and
-        byte, byte, byte, byte);     //   Setpoint.  Initial tuning parameters are also set here
+        int16_t, int16_t, int16_t, byte);     //   Setpoint.  Initial tuning parameters are also set here
 
 
     void SetMode(int Mode);               // * sets PID to either Manual (0) or Auto (non-0)
@@ -111,8 +111,8 @@ class integerPID
 
 
   //available but not commonly used functions ********************************************************
-    void SetTunings(byte, byte,       // * While most users will set the tunings once in the
-                    byte, byte=0);       	  //   constructor, this function gives the user the option
+    void SetTunings(int16_t, int16_t,       // * While most users will set the tunings once in the
+                    int16_t, byte=0);       	  //   constructor, this function gives the user the option
                                           //   of changing tunings during runtime for Adaptive control
 	void SetControllerDirection(byte);	  // * Sets the Direction, or "Action" of the controller. DIRECT
 										  //   means the output will increase when error is positive. REVERSE
@@ -132,12 +132,12 @@ class integerPID
   private:
 
 
-  byte dispKp;
-  byte dispKi;
-  byte dispKd;
-	uint16_t  kp;                  // * (P)roportional Tuning Parameter
-  uint16_t  ki;                  // * (I)ntegral Tuning Parameter
-  uint16_t  kd;                  // * (D)erivative Tuning Parameter
+  int16_t dispKp;
+  int16_t dispKi;
+  int16_t dispKd;
+	int16_t  kp;                  // * (P)roportional Tuning Parameter
+  int16_t  ki;                  // * (I)ntegral Tuning Parameter
+  int16_t  kd;                  // * (D)erivative Tuning Parameter
 
 	int controllerDirection;
 
@@ -172,6 +172,10 @@ class integerPID_ideal
         byte, byte, byte, byte);     //   Setpoint.  Initial tuning parameters are also set here
 
     bool Compute();                       // * performs the PID calculation.  it should be
+                                          //   called every time loop() cycles. ON/OFF and
+                                          //   calculation frequency can be set using SetMode
+                                          //   SetSampleTime respectively
+    bool Compute(uint16_t);               // * performs the PID calculation.  it should be
                                           //   called every time loop() cycles. ON/OFF and
                                           //   calculation frequency can be set using SetMode
                                           //   SetSampleTime respectively
@@ -212,7 +216,7 @@ class integerPID_ideal
 	int controllerDirection;
 
     long *myInput;              //
-    uint16_t *myOutput;         //   This is a percentage figure multipled by 100 (To give 2 points of precision)
+    uint16_t *myOutput;         //   This is a percentage figure multiplied by 100 (To give 2 points of precision)
     uint16_t *mySetpoint;       //
     uint16_t *mySensitivity;
     byte *mySampleTime;

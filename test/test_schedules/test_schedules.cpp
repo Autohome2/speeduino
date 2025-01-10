@@ -1,13 +1,16 @@
 #include <Arduino.h>
 #include <unity.h>
 #include <init.h>
+#include <avr/sleep.h>
 
 #include "test_schedules.h"
 
 void setup()
 {
   pinMode(LED_BUILTIN, OUTPUT);
-  delay(2000);
+#if !defined(SIMULATOR)
+    delay(2000);
+#endif
 
   UNITY_BEGIN(); // start unit testing
 
@@ -19,9 +22,14 @@ void setup()
   //test_status_running_to_off();
   test_accuracy_timeout();
   test_accuracy_duration();
-
+  
   UNITY_END(); // stop unit testing
 
+#if defined(SIMULATOR)       // Tell SimAVR we are done
+    cli();
+    sleep_enable();
+    sleep_cpu();
+#endif   
 }
 
 void loop()
